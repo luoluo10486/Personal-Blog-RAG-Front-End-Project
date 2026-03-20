@@ -1,8 +1,10 @@
 ﻿<script setup>
-import { computed, onBeforeUnmount, ref } from "vue";
-import { useRoute } from "vue-router";
+import { computed, onBeforeUnmount, ref, watch } from "vue";
+import { useRoute, useRouter } from "vue-router";
 
 const route = useRoute();
+const router = useRouter();
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "").trim();
 
 const showPassword = ref(false);
 const isRegister = computed(() => route.meta.authMode === "register");
@@ -13,8 +15,10 @@ const confirmPassword = ref("");
 const verifyCode = ref("");
 
 const sendingCode = ref(false);
+const submitting = ref(false);
 const countdown = ref(0);
 const formTip = ref("");
+const formTipType = ref("info");
 
 let countdownTimer = null;
 
@@ -32,9 +36,22 @@ const sendCodeText = computed(() => {
   return "发送验证码";
 });
 
-const canSendCode = computed(() => {
-  return isRegister.value && emailValid.value && !sendingCode.value && countdown.value === 0;
+const submitText = computed(() => {
+  if (submitting.value) {
+    return isRegister.value ? "注册中..." : "登录中...";
+  }
+
+  return isRegister.value ? "注册" : "登录";
 });
+
+const canSendCode = computed(() => {
+  return isRegister.value && emailValid.value && !sendingCode.value && countdown.value === 0 && !submitting.value;
+});
+
+function setTip(message, type = "info") {
+  formTip.value = message;
+  formTipType.value = type;
+}
 
 function clearCountdown() {
   if (countdownTimer) {
@@ -58,9 +75,55 @@ function startCountdown(seconds = 60) {
   }, 1000);
 }
 
+function normalizeVerifyCode() {
+  verifyCode.value = verifyCode.value.replace(/\D/g, "").slice(0, 6);
+}
+
+function validatePassword(rawPassword) {
+  const value = rawPassword.trim();
+
+  if (!value) {
+    return "请输入密码";
+  }
+
+  if (value.length < 6) {
+    return "密码长度至少 6 位";
+  }
+
+  return "";
+}
+
+async function requestAuth(path, body) {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    credentials: "include",
+    body: JSON.stringify(body)
+  });
+
+  const contentType = response.headers.get("content-type") || "";
+  const isJson = contentType.includes("application/json");
+  const payload = isJson ? await response.json() : { message: await response.text() };
+
+  if (!response.ok) {
+    throw new Error(payload?.message || payload?.error || "请求失败，请稍后重试");
+  }
+
+  return payload;
+}
+
+function saveAuthToken(payload) {
+  const token = payload?.token || payload?.data?.token || "";
+  if (token) {
+    localStorage.setItem("auth_token", token);
+  }
+}
+
 async function onSendCode() {
   if (!emailValid.value) {
-    formTip.value = "请先输入正确的邮箱地址";
+    setTip("请先输入正确的邮箱地址", "error");
     return;
   }
 
@@ -69,57 +132,112 @@ async function onSendCode() {
   }
 
   sendingCode.value = true;
-  formTip.value = "";
+  setTip("", "info");
 
   try {
-    // TODO: 接入后端发送邮箱验证码接口。
-    await new Promise((resolve) => setTimeout(resolve, 600));
-    formTip.value = "验证码已发送，请查收邮箱";
+    const payload = await requestAuth("/api/auth/send-code", { email: email.value.trim() });
+    setTip(payload?.message || "验证码已发送，请查收邮箱", "success");
     startCountdown(60);
   } catch (error) {
-    formTip.value = "验证码发送失败，请稍后重试";
+    setTip(error?.message || "验证码发送失败，请稍后重试", "error");
   } finally {
     sendingCode.value = false;
   }
 }
 
-function onSubmit() {
-  formTip.value = "";
+async function onSubmit() {
+  if (submitting.value) {
+    return;
+  }
+
+  setTip("", "info");
 
   if (!emailValid.value) {
-    formTip.value = "请输入正确的邮箱地址";
+    setTip("请输入正确的邮箱地址", "error");
     return;
   }
 
-  if (!password.value) {
-    formTip.value = "请输入密码";
+  const passwordError = validatePassword(password.value);
+  if (passwordError) {
+    setTip(passwordError, "error");
     return;
   }
 
-  if (isRegister.value) {
-    if (!verifyCode.value) {
-      formTip.value = "请输入邮箱验证码";
+  submitting.value = true;
+
+  try {
+    if (isRegister.value) {
+      normalizeVerifyCode();
+
+      if (verifyCode.value.length !== 6) {
+        setTip("请输入 6 位邮箱验证码", "error");
+        return;
+      }
+
+      if (!confirmPassword.value.trim()) {
+        setTip("请再次输入密码", "error");
+        return;
+      }
+
+      if (password.value.trim() !== confirmPassword.value.trim()) {
+        setTip("两次输入的密码不一致", "error");
+        return;
+      }
+
+      const payload = await requestAuth("/api/auth/register", {
+        email: email.value.trim(),
+        password: password.value.trim(),
+        code: verifyCode.value
+      });
+
+      setTip(payload?.message || "注册成功，请登录", "success");
+      password.value = "";
+      confirmPassword.value = "";
+      verifyCode.value = "";
+      clearCountdown();
+      countdown.value = 0;
+      await router.push({ path: "/login", query: { email: email.value.trim(), registered: "1" } });
       return;
     }
 
-    if (!confirmPassword.value) {
-      formTip.value = "请再次输入密码";
-      return;
-    }
+    const payload = await requestAuth("/api/auth/login", {
+      email: email.value.trim(),
+      password: password.value.trim()
+    });
 
-    if (password.value !== confirmPassword.value) {
-      formTip.value = "两次输入的密码不一致";
-      return;
-    }
-
-    // TODO: 接入后端注册接口。
-    formTip.value = "注册信息校验通过，等待接入后端接口";
-    return;
+    saveAuthToken(payload);
+    setTip(payload?.message || "登录成功，正在跳转", "success");
+    await router.push("/");
+  } catch (error) {
+    setTip(error?.message || "请求失败，请稍后重试", "error");
+  } finally {
+    submitting.value = false;
   }
-
-  // TODO: 接入后端登录接口。
-  formTip.value = "登录信息校验通过，等待接入后端接口";
 }
+
+watch(
+  () => route.fullPath,
+  () => {
+    showPassword.value = false;
+    password.value = "";
+    confirmPassword.value = "";
+    verifyCode.value = "";
+    clearCountdown();
+    countdown.value = 0;
+
+    const queryEmail = typeof route.query.email === "string" ? route.query.email : "";
+    if (queryEmail) {
+      email.value = queryEmail;
+    }
+
+    if (route.query.registered === "1" && !isRegister.value) {
+      setTip("注册成功，请使用账号密码登录", "success");
+    } else {
+      setTip("", "info");
+    }
+  },
+  { immediate: true }
+);
 
 onBeforeUnmount(() => {
   clearCountdown();
@@ -169,6 +287,7 @@ onBeforeUnmount(() => {
               maxlength="6"
               placeholder="请输入验证码"
               autocomplete="one-time-code"
+              @input="normalizeVerifyCode"
             />
             <button type="button" class="send-code" :disabled="!canSendCode" @click="onSendCode">
               {{ sendCodeText }}
@@ -186,7 +305,7 @@ onBeforeUnmount(() => {
           />
         </label>
 
-        <button class="submit" type="submit">{{ isRegister ? "注册" : "登录" }}</button>
+        <button class="submit" type="submit" :disabled="submitting">{{ submitText }}</button>
 
         <p class="auth-switch">
           <span>{{ isRegister ? "已有账号？" : "还没有账号？" }}</span>
@@ -195,7 +314,7 @@ onBeforeUnmount(() => {
           </RouterLink>
         </p>
 
-        <p v-if="formTip" class="form-tip">{{ formTip }}</p>
+        <p v-if="formTip" :class="['form-tip', `form-tip--${formTipType}`]">{{ formTip }}</p>
       </form>
     </div>
   </section>
@@ -436,6 +555,11 @@ input:focus {
   cursor: pointer;
 }
 
+.submit:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
 .auth-switch {
   margin: 0.2rem 0 0;
   text-align: center;
@@ -452,10 +576,21 @@ input:focus {
 
 .form-tip {
   margin: 0;
-  color: #1e293b;
   text-align: center;
   font-size: 0.92rem;
   font-weight: 600;
+}
+
+.form-tip--info {
+  color: #334155;
+}
+
+.form-tip--success {
+  color: #166534;
+}
+
+.form-tip--error {
+  color: #b91c1c;
 }
 
 @keyframes shapeInA {
