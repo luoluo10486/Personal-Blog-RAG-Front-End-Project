@@ -32,12 +32,7 @@ const router = createRouter({
     },
     {
       path: "/register",
-      name: "register",
-      component: LoginView,
-      meta: {
-        fullscreen: true,
-        authMode: "register"
-      }
+      redirect: { path: "/login", query: { mode: "register" } }
     }
   ]
 });

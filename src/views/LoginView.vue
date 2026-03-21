@@ -5,9 +5,11 @@ import { useRoute, useRouter } from "vue-router";
 const route = useRoute();
 const router = useRouter();
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "").trim();
+const AUTH_API_PREFIX = "/luoluo";
 
 const showPassword = ref(false);
-const isRegister = computed(() => route.meta.authMode === "register");
+const authMode = ref(route.query.mode === "register" ? "register" : "login");
+const isRegister = computed(() => authMode.value === "register");
 
 const email = ref("");
 const password = ref("");
@@ -51,6 +53,7 @@ const submitText = computed(() => {
 const canSendCode = computed(() => {
   return isRegister.value && emailValid.value && !sendingCode.value && countdown.value === 0 && !submitting.value;
 });
+const authCardKey = computed(() => (isRegister.value ? "register-card" : "login-card"));
 
 const musicTooltipText = computed(() => {
   if (needMusicGesture.value) {
@@ -63,6 +66,21 @@ const musicTooltipText = computed(() => {
 function setTip(message, type = "info") {
   formTip.value = message;
   formTipType.value = type;
+}
+
+function switchAuthMode(mode) {
+  if (authMode.value === mode) {
+    return;
+  }
+
+  authMode.value = mode;
+  showPassword.value = false;
+  password.value = "";
+  confirmPassword.value = "";
+  verifyCode.value = "";
+  clearCountdown();
+  countdown.value = 0;
+  setTip("", "info");
 }
 
 function clearCountdown() {
@@ -106,7 +124,8 @@ function validatePassword(rawPassword) {
 }
 
 async function requestAuth(path, body) {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
+  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+  const response = await fetch(`${API_BASE_URL}${AUTH_API_PREFIX}${normalizedPath}`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json"
@@ -146,10 +165,6 @@ function stopLoginMusic() {
 }
 
 async function tryPlayLoginMusic() {
-  if (isRegister.value) {
-    return;
-  }
-
   const audio = loginMusicRef.value;
   if (!audio) {
     return;
@@ -260,13 +275,13 @@ async function onSubmit() {
         code: verifyCode.value
       });
 
-      setTip(payload?.message || "注册成功，请登录", "success");
       password.value = "";
       confirmPassword.value = "";
       verifyCode.value = "";
       clearCountdown();
       countdown.value = 0;
-      await router.push({ path: "/login", query: { email: email.value.trim(), registered: "1" } });
+      switchAuthMode("login");
+      setTip(payload?.message || "注册成功，请登录", "success");
       return;
     }
 
@@ -286,32 +301,19 @@ async function onSubmit() {
 }
 
 watch(
-  () => route.fullPath,
-  () => {
-    showPassword.value = false;
-    password.value = "";
-    confirmPassword.value = "";
-    verifyCode.value = "";
-    clearCountdown();
-    countdown.value = 0;
+  () => [route.query.mode, route.query.email],
+  ([queryMode, queryEmail]) => {
+    if (queryMode === "register") {
+      switchAuthMode("register");
+    } else if (queryMode === "login") {
+      switchAuthMode("login");
+    }
 
-    const queryEmail = typeof route.query.email === "string" ? route.query.email : "";
-    if (queryEmail) {
+    if (typeof queryEmail === "string" && queryEmail) {
       email.value = queryEmail;
     }
 
-    if (route.query.registered === "1" && !isRegister.value) {
-      setTip("注册成功，请使用账号密码登录", "success");
-    } else {
-      setTip("", "info");
-    }
-
     nextTick(() => {
-      if (isRegister.value) {
-        stopLoginMusic();
-        return;
-      }
-
       void tryPlayLoginMusic();
     });
   },
@@ -332,9 +334,23 @@ onBeforeUnmount(() => {
     <div class="bg-shape bg-d" />
     <div class="bg-shape bg-e" />
     <div class="bg-shape bg-f" />
+    <a
+      class="github-link"
+      href="https://github.com/luoluo10486"
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label="打开 GitHub 主页"
+      title="GitHub"
+    >
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path
+          d="M12 .5a11.5 11.5 0 0 0-3.637 22.41c.575.106.785-.25.785-.556 0-.275-.01-1.004-.016-1.97-3.193.694-3.868-1.538-3.868-1.538-.522-1.326-1.276-1.68-1.276-1.68-1.043-.714.079-.699.079-.699 1.153.081 1.759 1.184 1.759 1.184 1.025 1.757 2.69 1.25 3.346.956.103-.743.401-1.25.729-1.538-2.55-.29-5.232-1.275-5.232-5.674 0-1.253.447-2.278 1.18-3.08-.118-.29-.512-1.455.112-3.034 0 0 .962-.308 3.15 1.176a10.95 10.95 0 0 1 5.736 0c2.186-1.484 3.146-1.176 3.146-1.176.626 1.579.232 2.744.114 3.034.735.802 1.178 1.827 1.178 3.08 0 4.41-2.686 5.38-5.244 5.664.412.355.779 1.055.779 2.126 0 1.536-.014 2.775-.014 3.153 0 .309.207.668.79.554A11.5 11.5 0 0 0 12 .5Z"
+          fill="currentColor"
+        />
+      </svg>
+    </a>
     <audio ref="loginMusicRef" src="/login-bgm.mp3" preload="auto" loop @play="onMusicPlay" @pause="onMusicPause" />
     <button
-      v-if="!isRegister"
       type="button"
       class="music-trigger"
       :class="{ 'is-playing': isMusicPlaying, 'is-blocked': needMusicGesture }"
@@ -357,7 +373,7 @@ onBeforeUnmount(() => {
     </button>
 
     <div class="login-shell">
-      <form class="login-card" @submit.prevent="onSubmit">
+      <form :key="authCardKey" class="login-card" @submit.prevent="onSubmit">
         <h1>{{ isRegister ? "创建账号" : "请登录" }}</h1>
 
         <label>
@@ -374,8 +390,24 @@ onBeforeUnmount(() => {
               placeholder="请输入密码"
               :autocomplete="isRegister ? 'new-password' : 'current-password'"
             />
-            <button type="button" class="toggle" @click="showPassword = !showPassword">
-              {{ showPassword ? "隐藏" : "显示" }}
+            <button
+              type="button"
+              class="toggle"
+              :class="showPassword ? 'is-visible' : 'is-hidden'"
+              :aria-label="showPassword ? '隐藏密码' : '显示密码'"
+              :title="showPassword ? '隐藏密码' : '显示密码'"
+              @click="showPassword = !showPassword"
+            >
+              <svg v-if="showPassword" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M2 12s3.8-6 10-6 10 6 10 6-3.8 6-10 6-10-6-10-6Z" />
+                <circle cx="12" cy="12" r="2.8" />
+              </svg>
+              <svg v-else viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M4 15c2.2-2.6 5-4 8-4 3.1 0 5.8 1.4 8 4" />
+                <path d="M8.2 18 6.8 20" />
+                <path d="M12 17.6V20" />
+                <path d="m15.8 18 1.4 2" />
+              </svg>
             </button>
           </div>
         </label>
@@ -412,9 +444,13 @@ onBeforeUnmount(() => {
 
         <p class="auth-switch">
           <span>{{ isRegister ? "已有账号？" : "还没有账号？" }}</span>
-          <RouterLink :to="isRegister ? '/login' : '/register'">
+          <button
+            type="button"
+            class="auth-switch__action"
+            @click="switchAuthMode(isRegister ? 'login' : 'register')"
+          >
             {{ isRegister ? "立即登录" : "立即注册" }}
-          </RouterLink>
+          </button>
         </p>
 
         <p v-if="formTip" :class="['form-tip', `form-tip--${formTipType}`]">{{ formTip }}</p>
@@ -537,42 +573,14 @@ onBeforeUnmount(() => {
   display: grid;
   gap: 0.9rem;
   opacity: 0;
-  transform: translateY(18px) scale(0.98);
-  animation: formWrapIn 0.55s ease-out 0.95s forwards;
+  transform: translateY(10px) scale(0.99);
+  animation: formWrapIn 0.36s ease-out forwards;
 }
 
 .login-card > * {
   opacity: 0;
-  transform: translateY(10px);
-  animation: formItemIn 0.5s ease forwards;
-}
-
-.login-card > *:nth-child(1) {
-  animation-delay: 1.05s;
-}
-
-.login-card > *:nth-child(2) {
-  animation-delay: 1.14s;
-}
-
-.login-card > *:nth-child(3) {
-  animation-delay: 1.22s;
-}
-
-.login-card > *:nth-child(4) {
-  animation-delay: 1.3s;
-}
-
-.login-card > *:nth-child(5) {
-  animation-delay: 1.38s;
-}
-
-.login-card > *:nth-child(6) {
-  animation-delay: 1.46s;
-}
-
-.login-card > *:nth-child(7) {
-  animation-delay: 1.54s;
+  transform: translateY(8px);
+  animation: formItemIn 0.3s ease 0.08s forwards;
 }
 
 h1 {
@@ -614,14 +622,53 @@ input:focus {
 }
 
 .password-wrap input {
-  padding-right: 4.4rem;
+  padding-right: 3rem;
 }
 
 .code-wrap input {
   padding-right: 7.7rem;
 }
 
-.toggle,
+.toggle {
+  position: absolute;
+  right: 7px;
+  top: 7px;
+  height: 32px;
+  width: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  display: grid;
+  place-items: center;
+  color: #0f766e;
+  cursor: pointer;
+  transition: transform 0.18s ease, background 0.18s ease, color 0.18s ease;
+}
+
+.toggle:hover {
+  transform: translateY(-1px);
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.toggle.is-visible {
+  color: #2563eb;
+}
+
+.toggle.is-hidden {
+  color: #0f766e;
+}
+
+.toggle svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
 .send-code {
   position: absolute;
   right: 7px;
@@ -670,11 +717,16 @@ input:focus {
   font-size: 0.93rem;
 }
 
-.auth-switch a {
+.auth-switch__action {
+  border: 0;
+  padding: 0;
+  background: transparent;
   margin-left: 0.42rem;
   color: #0f172a;
+  font-size: inherit;
   font-weight: 700;
   text-decoration: underline;
+  cursor: pointer;
 }
 
 .form-tip {
@@ -694,6 +746,32 @@ input:focus {
 
 .form-tip--error {
   color: #b91c1c;
+}
+
+.github-link {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  z-index: 4;
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  color: #1e293b;
+  text-decoration: none;
+  transition: color 0.18s ease, transform 0.18s ease, filter 0.18s ease;
+}
+
+.github-link:hover,
+.github-link:focus-visible {
+  color: #3b82f6;
+  transform: translateY(-1px) scale(1.06);
+  filter: drop-shadow(0 3px 10px rgba(59, 130, 246, 0.28));
+}
+
+.github-link svg {
+  width: 28px;
+  height: 28px;
 }
 
 .music-trigger {
@@ -903,6 +981,11 @@ input:focus {
     bottom: 0.8rem;
     width: 46px;
     height: 46px;
+  }
+
+  .github-link {
+    top: 0.78rem;
+    right: 0.78rem;
   }
 }
 </style>
