@@ -314,6 +314,8 @@ function saveAuthToken(payload) {
   if (token) {
     localStorage.setItem("auth_token", token);
   }
+
+  return token;
 }
 
 function resolvePostLoginRedirect() {
@@ -408,6 +410,7 @@ async function onSendCode() {
     const payload = await requestAuth("/system/public/member/auth/code/send", {
       body: {
         grantType: "email",
+        bizType: "REGISTER",
         email: email.value.trim(),
         captchaKey: captchaKey.value,
         captchaCode: captchaCode.value.trim()
@@ -419,7 +422,6 @@ async function onSendCode() {
     setTip(error?.message || "验证码发送失败，请稍后重试", "error");
   } finally {
     sendingCode.value = false;
-    await refreshCaptcha();
   }
 }
 
@@ -454,8 +456,8 @@ async function onSubmit() {
         return;
       }
 
-      if (!phoneValid.value) {
-        setTip("请输入正确的 11 位手机号", "error");
+      if (phone.value && !phoneValid.value) {
+        setTip("请输入正确的 11 位手机号，或留空", "error");
         return;
       }
 
@@ -474,18 +476,20 @@ async function onSubmit() {
         return;
       }
 
-      const payload = await requestAuth("/api/auth/register", {
-        registerType: "email",
-        username: nickname.value.trim(),
-        displayName: nickname.value.trim(),
-        phone: phone.value,
-        email: email.value.trim(),
-        password: password.value.trim(),
-        confirmPassword: confirmPassword.value.trim(),
-        emailCode: verifyCode.value,
-        code: verifyCode.value
+      const payload = await requestAuth("/system/public/member/auth/register", {
+        body: {
+          grantType: "email",
+          deviceType: "web",
+          displayName: nickname.value.trim(),
+          ...(phone.value ? { phone: phone.value } : {}),
+          email: email.value.trim(),
+          password: password.value.trim(),
+          confirmPassword: confirmPassword.value.trim(),
+          emailCode: verifyCode.value
+        }
       });
 
+      const token = saveAuthToken(payload);
       nickname.value = "";
       phone.value = "";
       password.value = "";
@@ -493,14 +497,25 @@ async function onSubmit() {
       verifyCode.value = "";
       clearCountdown();
       countdown.value = 0;
+
+      if (token) {
+        setTip(payload?.message || "注册成功，正在跳转", "success");
+        await router.push(resolvePostLoginRedirect());
+        return;
+      }
+
       switchAuthMode("login");
       setTip(payload?.message || "注册成功，请登录", "success");
       return;
     }
 
-    const payload = await requestAuth("/api/auth/login", {
-      email: email.value.trim(),
-      password: password.value.trim()
+    const payload = await requestAuth("/system/public/member/auth/login", {
+      body: {
+        grantType: "password",
+        deviceType: "web",
+        email: email.value.trim(),
+        password: password.value.trim()
+      }
     });
 
     saveAuthToken(payload);
@@ -625,13 +640,13 @@ onBeforeUnmount(() => {
         </label>
 
         <label v-if="isRegister">
-          <span>手机号</span>
+          <span>手机号（选填）</span>
           <input
             v-model="phone"
             type="tel"
             inputmode="numeric"
             maxlength="11"
-            placeholder="请输入手机号"
+            placeholder="请输入手机号（选填）"
             autocomplete="tel"
             @input="normalizePhone"
           />
@@ -949,8 +964,8 @@ input::-ms-clear {
 
 .captcha-wrap {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 112px;
-  gap: 0.7rem;
+  grid-template-columns: minmax(0, 1fr) 136px;
+  gap: 0.65rem;
 }
 
 .password-wrap input {
@@ -969,7 +984,7 @@ input::-ms-clear {
   height: 46px;
   border: 1px solid rgba(255, 255, 255, 0.62);
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.88);
   color: #334155;
   font: inherit;
   font-weight: 700;
@@ -981,7 +996,7 @@ input::-ms-clear {
   width: 100%;
   height: 100%;
   display: block;
-  object-fit: cover;
+  object-fit: contain;
 }
 
 .captcha-preview:disabled {
@@ -1370,7 +1385,7 @@ input::-ms-clear {
   }
 
   .captcha-wrap {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr) 124px;
   }
 }
 </style>

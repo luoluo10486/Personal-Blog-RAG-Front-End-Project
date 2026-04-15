@@ -23,9 +23,15 @@ npm run dev
 
 登录/注册页面目前会请求以下接口：
 
-- `POST /api/auth/send-code`
-- `POST /api/auth/register`
-- `POST /api/auth/login`
+- `POST /luoluo/system/public/member/auth/code/send`
+- `POST /luoluo/system/public/member/auth/register`
+- `POST /luoluo/system/public/member/auth/login`
+
+当前前端登录/注册参数约定：
+
+- 发送邮箱验证码：`grantType=email`、`bizType=REGISTER`、`captchaKey`、`captchaCode`、`email`
+- 登录：`grantType=password`、`deviceType=web`、`email`、`password`
+- 邮箱注册：`grantType=email`、`deviceType=web`、`displayName`、`email`、`emailCode`、`password`、`confirmPassword`，`phone` 为选填
 
 可通过环境变量配置后端地址：
 
