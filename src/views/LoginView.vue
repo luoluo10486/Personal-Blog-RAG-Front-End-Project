@@ -2,12 +2,13 @@
 import { computed, nextTick, onBeforeUnmount, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import LoginClothScene from "../components/LoginClothScene.vue";
+import { saveAuthSession } from "../utils/auth";
 
 const route = useRoute();
 const router = useRouter();
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "").trim();
 const AUTH_API_PREFIX = "/luoluo";
-const DEFAULT_AUTH_REDIRECT = "/";
+const DEFAULT_AUTH_REDIRECT = "/workspace";
 
 const showPassword = ref(false);
 const authMode = ref(route.query.mode === "register" ? "register" : "login");
@@ -310,12 +311,7 @@ async function requestAuth(path, options = {}) {
 }
 
 function saveAuthToken(payload) {
-  const token = payload?.token || payload?.data?.token || "";
-  if (token) {
-    localStorage.setItem("auth_token", token);
-  }
-
-  return token;
+  return saveAuthSession(payload);
 }
 
 function resolvePostLoginRedirect() {
@@ -777,6 +773,8 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .login-page {
+  width: 100%;
+  min-width: 100vw;
   min-height: 100vh;
   position: relative;
   overflow: hidden;
@@ -872,7 +870,9 @@ onBeforeUnmount(() => {
 
 .login-shell {
   min-height: 100vh;
-  width: min(1160px, calc(100% - 2.4rem));
+  width: 100%;
+  max-width: 1160px;
+  padding: 0 1.2rem;
   margin: 0 auto;
   position: relative;
   z-index: 3;
@@ -964,7 +964,7 @@ input::-ms-clear {
 
 .captcha-wrap {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 136px;
+  grid-template-columns: minmax(0, 1fr) 156px;
   gap: 0.65rem;
 }
 
@@ -1353,7 +1353,7 @@ input::-ms-clear {
 
 @media (max-width: 900px) {
   .login-shell {
-    width: min(1160px, calc(100% - 1.4rem));
+    padding: 0 0.7rem;
     place-items: center;
   }
 
@@ -1385,7 +1385,7 @@ input::-ms-clear {
   }
 
   .captcha-wrap {
-    grid-template-columns: minmax(0, 1fr) 124px;
+    grid-template-columns: minmax(0, 1fr) 138px;
   }
 }
 </style>

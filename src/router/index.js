@@ -1,18 +1,9 @@
 import { createRouter, createWebHistory } from "vue-router";
-import HomeView from "../views/HomeView.vue";
-import ArticlesView from "../views/ArticlesView.vue";
-import AboutView from "../views/AboutView.vue";
 import LoginView from "../views/LoginView.vue";
-
-const AUTH_TOKEN_KEY = "auth_token";
-
-function getStoredAuthToken() {
-  if (typeof window === "undefined") {
-    return "";
-  }
-
-  return window.localStorage.getItem(AUTH_TOKEN_KEY) || "";
-}
+import RagChatView from "../views/RagChatView.vue";
+import WorkbenchView from "../views/WorkbenchView.vue";
+import AdminConsoleView from "../views/AdminConsoleView.vue";
+import { getStoredAuthToken } from "../utils/auth";
 
 function resolveRedirectTarget(target) {
   if (typeof target !== "string") {
@@ -32,26 +23,36 @@ const router = createRouter({
   routes: [
     {
       path: "/",
-      name: "home",
-      component: HomeView,
+      redirect: "/workspace"
+    },
+    {
+      path: "/workspace",
+      name: "workspace-home",
+      component: WorkbenchView,
       meta: {
-        requiresAuth: true
+        requiresAuth: true,
+        title: "工作台首页",
+        description: "登录成功后的默认首页，用于进入问答区和后台管理区。"
       }
     },
     {
-      path: "/articles",
-      name: "articles",
-      component: ArticlesView,
+      path: "/rag",
+      name: "rag-chat",
+      component: RagChatView,
       meta: {
-        requiresAuth: true
+        requiresAuth: true,
+        title: "RAG 问答",
+        description: "基于知识检索与流式回答的企业级问答工作台"
       }
     },
     {
-      path: "/about",
-      name: "about",
-      component: AboutView,
+      path: "/admin",
+      name: "rag-admin",
+      component: AdminConsoleView,
       meta: {
-        requiresAuth: true
+        requiresAuth: true,
+        title: "RAG 后台管理",
+        description: "按 ragent 后台接口重构的管理台总览入口。"
       }
     },
     {
@@ -65,6 +66,14 @@ const router = createRouter({
     {
       path: "/register",
       redirect: { path: "/login", query: { mode: "register" } }
+    },
+    {
+      path: "/articles",
+      redirect: "/workspace"
+    },
+    {
+      path: "/about",
+      redirect: "/workspace"
     }
   ]
 });

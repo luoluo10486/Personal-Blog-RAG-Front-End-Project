@@ -13,9 +13,10 @@ npm run dev
 
 ## 页面路由
 
-- `/`：首页
-- `/articles`：文章页
-- `/about`：关于页
+- `/`：默认重定向到工作台首页
+- `/workspace`：登录后的工作台首页
+- `/rag`：RAG 问答页
+- `/admin`：RAG 后台管理总览页
 - `/login`：登录页
 - `/register`：注册页
 
@@ -33,17 +34,47 @@ npm run dev
 - 登录：`grantType=password`、`deviceType=web`、`email`、`password`
 - 邮箱注册：`grantType=email`、`deviceType=web`、`displayName`、`email`、`emailCode`、`password`、`confirmPassword`，`phone` 为选填
 
+## RAG 问答联调说明
+
+登录成功后默认进入 `/workspace`，再通过左侧菜单分别进入：
+
+- `工作台首页`
+- `RAG问答`
+- `RAG后台管理`
+
+其中 `RAG问答` 和 `RAG后台管理` 都基于 `frontend` 目录中的 `ragent` 接口能力做了 Vue 版重构。
+
+当前接入的 RAG 接口包括：
+
+- `GET /api/ragent/conversations`
+- `GET /api/ragent/conversations/{conversationId}/messages`
+- `DELETE /api/ragent/conversations/{conversationId}`
+- `GET /api/ragent/rag/sample-questions`
+- `GET /api/ragent/rag/v3/chat`
+- `POST /api/ragent/rag/v3/stop`
+- `GET /api/ragent/admin/dashboard/overview`
+- `GET /api/ragent/knowledge-base`
+- `GET /api/ragent/rag/traces/runs`
+- `GET /api/ragent/sample-questions`
+- `GET /api/ragent/users`
+- `GET /api/ragent/rag/settings`
+
+新增环境变量：
+
+```env
+VITE_RAG_API_BASE_URL=/api/ragent
+```
+
 可通过环境变量配置后端地址：
 
 ```env
 VITE_API_BASE_URL=http://localhost:8080
+VITE_RAG_API_BASE_URL=/api/ragent
 ```
 
-开发环境如果后端在 `http://localhost:8080`，项目也内置了 Vite 代理：
+开发环境内置了两组代理：
 
-- 前端请求 `/luoluo/*`
-- Vite 自动转发到 `http://localhost:8080/luoluo/*`
+- `/luoluo/*` 转发到 `http://localhost:8080`
+- `/api/*` 转发到 `http://localhost:9090`
 
 这样本地联调时可以避免浏览器跨域拦截。
-
-> 当后端实际路径是 `/api/v1/member/auth/*` 时，可通过网关转发或前端路径映射来对齐。

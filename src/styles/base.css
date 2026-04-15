@@ -1,10 +1,8 @@
-@import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Sora:wght@500;600;700;800&display=swap");
-
 :root {
   color-scheme: light;
-  --text: #0f172a;
-  --muted: #475569;
-  --bg: #f1efe7;
+  --text: #1f1f1f;
+  --muted: #595959;
+  --bg: #f5f7fa;
 }
 
 *,
@@ -16,6 +14,7 @@
 html,
 body,
 #app {
+  width: 100%;
   margin: 0;
   min-height: 100%;
 }
@@ -23,7 +22,12 @@ body,
 body {
   background: var(--bg);
   color: var(--text);
-  font-family: "Manrope", "Segoe UI", sans-serif;
+  font-family:
+    "PingFang SC",
+    "Microsoft YaHei",
+    "Helvetica Neue",
+    Arial,
+    sans-serif;
   text-rendering: optimizeLegibility;
 }
 
@@ -32,8 +36,13 @@ h2,
 h3,
 h4,
 h5 {
-  font-family: "Sora", "Manrope", sans-serif;
-  letter-spacing: -0.01em;
+  font-family:
+    "PingFang SC",
+    "Microsoft YaHei",
+    "Helvetica Neue",
+    Arial,
+    sans-serif;
+  letter-spacing: 0;
 }
 
 p {
@@ -42,7 +51,7 @@ p {
 
 .route-fade-enter-active,
 .route-fade-leave-active {
-  transition: opacity 0.24s ease, transform 0.24s ease;
+  transition: opacity 0.18s ease, transform 0.18s ease;
 }
 
 .route-fade-enter-from,

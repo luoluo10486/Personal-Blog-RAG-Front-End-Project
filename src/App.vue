@@ -4,11 +4,12 @@ import MainLayout from "./layouts/MainLayout.vue";
 </script>
 
 <template>
-  <MainLayout>
-    <RouterView v-slot="{ Component, route }">
-      <Transition name="route-fade" mode="out-in">
-        <component :is="Component" :key="route.fullPath" />
-      </Transition>
-    </RouterView>
-  </MainLayout>
+  <RouterView v-slot="{ Component, route }">
+    <Transition name="route-fade" mode="out-in">
+      <component v-if="route.meta.fullscreen" :is="Component" :key="route.fullPath" />
+      <MainLayout v-else :key="route.fullPath">
+        <component :is="Component" />
+      </MainLayout>
+    </Transition>
+  </RouterView>
 </template>
