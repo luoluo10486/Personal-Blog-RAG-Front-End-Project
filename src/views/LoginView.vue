@@ -31,6 +31,7 @@ const countdown = ref(0);
 const formTip = ref("");
 const formTipType = ref("info");
 const loginMusicRef = ref(null);
+const volumeChargeSfxRef = ref(null);
 const needMusicGesture = ref(false);
 const isMusicPlaying = ref(false);
 const loginTrackName = "Drink, Pray, Love!";
@@ -185,6 +186,42 @@ function stopVolumeShotLoop() {
   }
 }
 
+function startVolumeChargeSound() {
+  const audio = volumeChargeSfxRef.value;
+  if (!audio) {
+    return;
+  }
+
+  stopVolumeChargeSound();
+  audio.loop = true;
+  audio.playbackRate = 1;
+  audio.volume = 0.62;
+  audio.currentTime = 0;
+  void audio.play().catch(() => {});
+}
+
+function updateVolumeChargeSound(ratio) {
+  const audio = volumeChargeSfxRef.value;
+  if (!audio) {
+    return;
+  }
+
+  const safeRatio = clampVolume(ratio);
+  audio.playbackRate = 1 + safeRatio * 0.18;
+  audio.volume = 0.58 + safeRatio * 0.18;
+}
+
+function stopVolumeChargeSound() {
+  const audio = volumeChargeSfxRef.value;
+  if (!audio) {
+    return;
+  }
+
+  audio.pause();
+  audio.currentTime = 0;
+  audio.playbackRate = 1;
+}
+
 function resetVolumeProjectile() {
   isVolumeProjectileFlying.value = false;
   volumeProjectileX.value = -18;
@@ -206,6 +243,7 @@ function stepVolumeCharge(timestamp) {
   const ratio = Math.min(elapsed / 1500, 1);
 
   volumeChargeRatio.value = ratio;
+  updateVolumeChargeSound(ratio);
   volumeChargeFrameId = requestAnimationFrame(stepVolumeCharge);
 }
 
@@ -274,6 +312,7 @@ function finishVolumeCharge(event, shouldLaunch = true) {
 
   isVolumeCharging.value = false;
   stopVolumeChargeLoop();
+  stopVolumeChargeSound();
   releaseVolumePointer(event);
   volumeChargeStartedAt = 0;
 
@@ -306,6 +345,7 @@ function onVolumePressStart(event) {
     activeVolumePointerId = null;
   }
 
+  startVolumeChargeSound();
   stopVolumeChargeLoop();
   volumeChargeFrameId = requestAnimationFrame(stepVolumeCharge);
 }
@@ -793,6 +833,7 @@ onBeforeUnmount(() => {
   clearCountdown();
   stopVolumeChargeLoop();
   stopVolumeShotLoop();
+  stopVolumeChargeSound();
   stopLoginMusic();
 });
 </script>
@@ -822,6 +863,7 @@ onBeforeUnmount(() => {
       </svg>
     </a>
     <audio ref="loginMusicRef" src="/login-bgm.mp3" preload="auto" loop @play="onMusicPlay" @pause="onMusicPause" />
+    <audio ref="volumeChargeSfxRef" src="/sfx/angry-birds-charge.mp3" preload="auto" />
     <div class="media-controls">
       <div class="volume-control" :class="{ 'is-charging': isVolumeCharging }">
         <button
