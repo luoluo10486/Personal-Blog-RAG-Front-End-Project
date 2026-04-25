@@ -4,20 +4,31 @@ import { useRoute } from "vue-router";
 
 const route = useRoute();
 const active = computed(() => route.name);
+
+const navLinks = [
+  { name: "workspace-home", label: "工作台", to: "/workspace" },
+  { name: "rag-chat", label: "RAG 问答", to: "/rag" },
+  { name: "rag-admin", label: "后台管理", to: "/admin" }
+];
 </script>
 
 <template>
   <header class="nav-wrap">
-    <nav class="nav">
-      <RouterLink class="brand" to="/">
+    <nav class="nav" aria-label="主导航">
+      <RouterLink class="brand" to="/workspace" aria-label="返回工作台">
         <span class="brand__dot" />
-        NovaLog
+        RAG Studio
       </RouterLink>
 
       <div class="nav__links">
-        <RouterLink :class="['nav__link', { 'is-active': active === 'home' }]" to="/">首页</RouterLink>
-        <RouterLink :class="['nav__link', { 'is-active': active === 'articles' }]" to="/articles">文章</RouterLink>
-        <RouterLink :class="['nav__link', { 'is-active': active === 'about' }]" to="/about">关于</RouterLink>
+        <RouterLink
+          v-for="item in navLinks"
+          :key="item.name"
+          :class="['nav__link', { 'is-active': active === item.name }]"
+          :to="item.to"
+        >
+          {{ item.label }}
+        </RouterLink>
       </div>
 
       <RouterLink class="nav__cta" to="/login">登录</RouterLink>

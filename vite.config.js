@@ -3,6 +3,16 @@ import vue from "@vitejs/plugin-vue";
 
 export default defineConfig({
   plugins: [vue()],
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vue: ["vue", "vue-router", "pinia"],
+          three: ["three"]
+        }
+      }
+    }
+  },
   server: {
     port: 5173,
     proxy: {

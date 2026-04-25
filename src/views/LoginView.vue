@@ -32,6 +32,10 @@ const formTip = ref("");
 const formTipType = ref("info");
 const loginMusicRef = ref(null);
 const volumeChargeSfxRef = ref(null);
+const loginMusicSrc = ref("");
+const volumeChargeSfxSrc = ref("");
+const LOGIN_MUSIC_URL = "/login-bgm.mp3";
+const VOLUME_CHARGE_SFX_URL = "/sfx/angry-birds-charge.mp3";
 const needMusicGesture = ref(false);
 const isMusicPlaying = ref(false);
 const loginTrackName = "Drink, Pray, Love!";
@@ -154,6 +158,18 @@ function clampVolume(value) {
   return Math.min(1, Math.max(0, value));
 }
 
+function ensureLoginMusicLoaded() {
+  if (!loginMusicSrc.value) {
+    loginMusicSrc.value = LOGIN_MUSIC_URL;
+  }
+}
+
+function ensureVolumeChargeSfxLoaded() {
+  if (!volumeChargeSfxSrc.value) {
+    volumeChargeSfxSrc.value = VOLUME_CHARGE_SFX_URL;
+  }
+}
+
 function syncLoginMusicVolume() {
   const audio = loginMusicRef.value;
   if (!audio) {
@@ -187,6 +203,7 @@ function stopVolumeShotLoop() {
 }
 
 function startVolumeChargeSound() {
+  ensureVolumeChargeSfxLoaded();
   const audio = volumeChargeSfxRef.value;
   if (!audio) {
     return;
@@ -607,6 +624,8 @@ function stopLoginMusic() {
 }
 
 async function tryPlayLoginMusic() {
+  ensureLoginMusicLoaded();
+  await nextTick();
   const audio = loginMusicRef.value;
   if (!audio) {
     return;
@@ -862,8 +881,8 @@ onBeforeUnmount(() => {
         />
       </svg>
     </a>
-    <audio ref="loginMusicRef" src="/login-bgm.mp3" preload="auto" loop @play="onMusicPlay" @pause="onMusicPause" />
-    <audio ref="volumeChargeSfxRef" src="/sfx/angry-birds-charge.mp3" preload="auto" />
+    <audio ref="loginMusicRef" :src="loginMusicSrc" preload="none" loop @play="onMusicPlay" @pause="onMusicPause" />
+    <audio ref="volumeChargeSfxRef" :src="volumeChargeSfxSrc" preload="none" />
     <div class="media-controls">
       <div class="volume-control" :class="{ 'is-charging': isVolumeCharging }">
         <button

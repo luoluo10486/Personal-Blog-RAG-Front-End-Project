@@ -675,9 +675,19 @@ onBeforeUnmount(() => {
 
 <template>
   <section class="rag-shell">
+    <div class="chinoiserie-layer" aria-hidden="true">
+      <span class="ink-sun" />
+      <span class="ink-mountain ink-mountain--left" />
+      <span class="ink-mountain ink-mountain--right" />
+      <span class="cloud-ribbon cloud-ribbon--top" />
+      <span class="cloud-ribbon cloud-ribbon--bottom" />
+      <span class="bamboo-shadow" />
+    </div>
+
     <header class="rag-topbar">
       <div class="rag-brand">
         <div class="rag-brand__logo">R</div>
+        <span class="rag-brand__seal" aria-hidden="true">问</span>
         <div>
           <strong>RAG 问答</strong>
           <span>Clean workspace</span>
@@ -1541,6 +1551,616 @@ onBeforeUnmount(() => {
 .send-button.is-stop {
   background: #dc2626;
   border-color: #dc2626;
+}
+
+/* 水墨主题覆盖 */
+.rag-shell {
+  position: relative;
+  isolation: isolate;
+  background:
+    radial-gradient(circle at 12% 8%, rgba(36, 64, 52, 0.16), transparent 24%),
+    radial-gradient(circle at 88% 12%, rgba(142, 116, 66, 0.16), transparent 28%),
+    linear-gradient(135deg, rgba(255, 252, 243, 0.96), rgba(238, 234, 218, 0.9)),
+    #f7f1e2;
+  color: #243028;
+}
+
+.rag-shell::before,
+.rag-shell::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: -1;
+}
+
+.rag-shell::before {
+  background:
+    linear-gradient(90deg, rgba(36, 48, 40, 0.04) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(36, 48, 40, 0.035) 1px, transparent 1px);
+  background-size: 34px 34px;
+  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.55), transparent 78%);
+}
+
+.rag-shell::after {
+  background:
+    radial-gradient(ellipse at 4% 92%, rgba(20, 25, 22, 0.18), transparent 32%),
+    radial-gradient(ellipse at 96% 76%, rgba(73, 94, 80, 0.13), transparent 26%);
+  filter: blur(16px);
+  opacity: 0.8;
+}
+
+.rag-topbar,
+.rag-layout {
+  position: relative;
+  z-index: 1;
+}
+
+.rag-brand__logo,
+.rag-user__avatar {
+  background:
+    radial-gradient(circle at 30% 24%, rgba(255, 255, 255, 0.55), transparent 24%),
+    linear-gradient(135deg, #1f2f29, #5d725f);
+  box-shadow: 0 10px 26px rgba(31, 47, 41, 0.24);
+}
+
+.rag-brand strong,
+.sidebar-card__header h2,
+.chat-card__header h1,
+.welcome-box h3,
+.session-item strong,
+.suggestion-card strong {
+  color: #1f2f29;
+  font-family: "STKaiti", "KaiTi", "Microsoft YaHei", serif;
+  letter-spacing: 0.03em;
+}
+
+.rag-brand span,
+.rag-user small,
+.chat-card__desc,
+.session-item span,
+.suggestion-card small,
+.suggestion-card span,
+.message-bubble__meta,
+.composer__hint,
+.sidebar-card__search,
+.panel-state,
+.welcome-box p {
+  color: #6f695d;
+}
+
+.sidebar-card,
+.chat-card,
+.rag-user,
+.ghost-button,
+.suggestion-card,
+.message-bubble,
+.composer__input {
+  border-color: rgba(70, 76, 61, 0.18);
+  background:
+    linear-gradient(180deg, rgba(255, 253, 247, 0.88), rgba(246, 240, 225, 0.78)),
+    rgba(255, 252, 243, 0.86);
+  box-shadow:
+    0 18px 48px rgba(50, 42, 28, 0.10),
+    inset 0 1px 0 rgba(255, 255, 255, 0.58);
+  backdrop-filter: blur(14px);
+}
+
+.sidebar-card,
+.chat-card {
+  border-radius: 28px;
+}
+
+.sidebar-card__label,
+.chat-card__label {
+  color: #8b6f3d;
+  letter-spacing: 0.2em;
+}
+
+.new-chat-button,
+.send-button {
+  border-color: #243028;
+  background: linear-gradient(135deg, #18231f, #536656);
+  color: #fffaf0;
+  box-shadow: 0 12px 26px rgba(31, 47, 41, 0.18);
+}
+
+.new-chat-button:hover,
+.send-button:hover {
+  border-color: #6f7f63;
+  background: linear-gradient(135deg, #243028, #6f7f63);
+}
+
+.ghost-button:hover,
+.thinking-toggle:hover,
+.message-actions button:hover:not(:disabled) {
+  border-color: #8b6f3d;
+  color: #4d5d4f;
+  background: rgba(255, 249, 235, 0.78);
+}
+
+.ghost-button--danger:hover,
+.send-button.is-stop {
+  border-color: #8f3a32;
+  background: #8f3a32;
+  color: #fff9eb;
+}
+
+.session-item {
+  border-color: rgba(70, 76, 61, 0.1);
+  background: rgba(255, 250, 238, 0.64);
+}
+
+.session-item:hover {
+  background: rgba(239, 230, 205, 0.62);
+}
+
+.session-item.is-active {
+  border-color: rgba(93, 114, 95, 0.42);
+  background:
+    linear-gradient(90deg, rgba(93, 114, 95, 0.18), rgba(255, 250, 238, 0.78));
+}
+
+.chat-card__header,
+.composer,
+.sidebar-card__search {
+  border-color: rgba(70, 76, 61, 0.14);
+}
+
+.chat-card__body,
+.message-list {
+  background:
+    radial-gradient(circle at 18% 12%, rgba(93, 114, 95, 0.08), transparent 24%),
+    rgba(255, 252, 243, 0.38);
+}
+
+.thinking-toggle {
+  border-color: rgba(93, 114, 95, 0.22);
+  background: rgba(255, 250, 238, 0.72);
+  color: #4d5d4f;
+}
+
+.thinking-toggle.is-active,
+.message-actions button.is-active {
+  border-color: rgba(139, 111, 61, 0.44);
+  background: rgba(229, 216, 181, 0.52);
+  color: #6f4f1f;
+}
+
+.notice-bar--info {
+  background: rgba(229, 216, 181, 0.48);
+  color: #5b513e;
+}
+
+.notice-bar--success {
+  background: rgba(213, 227, 207, 0.64);
+  color: #36543d;
+}
+
+.notice-bar--error {
+  background: rgba(245, 218, 210, 0.68);
+  color: #8f3a32;
+}
+
+.suggestion-card:hover {
+  border-color: rgba(139, 111, 61, 0.46);
+  box-shadow: 0 18px 38px rgba(50, 42, 28, 0.14);
+}
+
+.message-avatar {
+  background: rgba(229, 216, 181, 0.72);
+  color: #4a3f2c;
+}
+
+.message-row--assistant .message-avatar {
+  background: #243028;
+  color: #fff9eb;
+}
+
+.message-bubble {
+  border-radius: 20px 20px 20px 6px;
+}
+
+.message-bubble--user {
+  border-color: rgba(93, 114, 95, 0.42);
+  border-radius: 20px 20px 6px 20px;
+  background:
+    linear-gradient(135deg, rgba(219, 232, 209, 0.82), rgba(249, 244, 231, 0.9));
+}
+
+.message-bubble__content,
+.thinking-panel pre {
+  color: #28322b;
+}
+
+.thinking-panel {
+  border-color: rgba(93, 114, 95, 0.28);
+  background: rgba(247, 241, 226, 0.82);
+}
+
+.thinking-panel summary,
+.thinking-panel pre,
+.thinking-tip {
+  color: #4d5d4f;
+}
+
+.message-loading span {
+  background: #6f7f63;
+}
+
+.message-actions button {
+  border-color: rgba(70, 76, 61, 0.16);
+  background: rgba(255, 252, 243, 0.72);
+  color: #6f695d;
+}
+
+.composer {
+  background:
+    linear-gradient(180deg, rgba(255, 252, 243, 0.8), rgba(241, 233, 214, 0.84));
+}
+
+.composer__input {
+  color: #1f2f29;
+  caret-color: #6f4f1f;
+}
+
+.composer__input:focus {
+  border-color: rgba(139, 111, 61, 0.56);
+  box-shadow: 0 0 0 4px rgba(139, 111, 61, 0.12);
+}
+
+/* 中式美学强化：山水、云纹、朱印、竹影 */
+.chinoiserie-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.ink-sun {
+  position: absolute;
+  top: 86px;
+  right: 12%;
+  width: 92px;
+  height: 92px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 34% 34%, rgba(255, 238, 199, 0.9), rgba(178, 65, 49, 0.52) 58%, transparent 62%);
+  opacity: 0.72;
+  filter: blur(0.3px);
+}
+
+.ink-mountain {
+  position: absolute;
+  bottom: -36px;
+  width: 48vw;
+  height: 220px;
+  opacity: 0.42;
+  filter: blur(1px);
+  background:
+    radial-gradient(ellipse at 18% 72%, rgba(31, 47, 41, 0.38), transparent 36%),
+    radial-gradient(ellipse at 48% 68%, rgba(74, 93, 76, 0.34), transparent 42%),
+    radial-gradient(ellipse at 78% 78%, rgba(20, 25, 22, 0.28), transparent 34%);
+}
+
+.ink-mountain--left {
+  left: -10vw;
+}
+
+.ink-mountain--right {
+  right: -12vw;
+  transform: scaleX(-1) translateY(-8px);
+  opacity: 0.34;
+}
+
+.cloud-ribbon {
+  position: absolute;
+  width: 260px;
+  height: 82px;
+  border: 1px solid rgba(139, 111, 61, 0.28);
+  border-left: 0;
+  border-right: 0;
+  opacity: 0.48;
+}
+
+.cloud-ribbon::before,
+.cloud-ribbon::after {
+  content: "";
+  position: absolute;
+  border: 1px solid rgba(139, 111, 61, 0.28);
+  border-radius: 999px;
+}
+
+.cloud-ribbon::before {
+  width: 92px;
+  height: 34px;
+  left: 22px;
+  top: 18px;
+}
+
+.cloud-ribbon::after {
+  width: 134px;
+  height: 42px;
+  right: 28px;
+  bottom: 12px;
+}
+
+.cloud-ribbon--top {
+  top: 120px;
+  left: 8%;
+}
+
+.cloud-ribbon--bottom {
+  right: 9%;
+  bottom: 126px;
+  transform: scaleX(-1);
+}
+
+.bamboo-shadow {
+  position: absolute;
+  left: 24px;
+  top: 12%;
+  width: 132px;
+  height: 72%;
+  opacity: 0.24;
+  background:
+    linear-gradient(88deg, transparent 0 42px, rgba(31, 47, 41, 0.5) 43px 46px, transparent 47px),
+    linear-gradient(84deg, transparent 0 72px, rgba(31, 47, 41, 0.38) 73px 76px, transparent 77px),
+    radial-gradient(ellipse at 64px 90px, rgba(31, 47, 41, 0.36) 0 12px, transparent 13px),
+    radial-gradient(ellipse at 88px 170px, rgba(31, 47, 41, 0.32) 0 14px, transparent 15px),
+    radial-gradient(ellipse at 54px 258px, rgba(31, 47, 41, 0.28) 0 12px, transparent 13px);
+  filter: blur(0.4px);
+}
+
+.rag-brand {
+  position: relative;
+}
+
+.rag-brand__seal {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  margin-left: -6px;
+  border: 2px solid rgba(153, 39, 30, 0.82);
+  border-radius: 7px;
+  color: #9a2f28;
+  font-family: "STKaiti", "KaiTi", serif;
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1;
+  transform: rotate(-8deg);
+  background: rgba(255, 245, 225, 0.68);
+}
+
+.sidebar-card,
+.chat-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: 30px;
+}
+
+.sidebar-card::before,
+.chat-card::before,
+.suggestion-card::before,
+.overview-scroll-line {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+}
+
+.sidebar-card::before,
+.chat-card::before {
+  inset: 10px;
+  border: 1px solid rgba(139, 111, 61, 0.18);
+  border-radius: 24px;
+}
+
+.chat-card::after {
+  content: "问";
+  position: absolute;
+  right: 26px;
+  bottom: 88px;
+  color: rgba(154, 47, 40, 0.08);
+  font-family: "STKaiti", "KaiTi", serif;
+  font-size: 132px;
+  line-height: 1;
+  pointer-events: none;
+}
+
+.suggestion-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.suggestion-card::before {
+  top: 12px;
+  right: 12px;
+  width: 34px;
+  height: 34px;
+  border: 1px solid rgba(154, 47, 40, 0.28);
+  border-radius: 9px;
+  transform: rotate(8deg);
+}
+
+.welcome-box h3::after {
+  content: "｜松风入砚";
+  margin-left: 10px;
+  color: #9a2f28;
+  font-size: 18px;
+  letter-spacing: 0.08em;
+}
+
+.message-bubble--assistant {
+  background:
+    linear-gradient(135deg, rgba(255, 253, 247, 0.92), rgba(238, 230, 207, 0.78)),
+    repeating-linear-gradient(135deg, rgba(139, 111, 61, 0.035) 0 1px, transparent 1px 8px);
+}
+
+.message-row--assistant .message-bubble {
+  border-left: 4px solid rgba(139, 111, 61, 0.42);
+}
+
+.message-row--user .message-bubble {
+  border-right: 4px solid rgba(93, 114, 95, 0.42);
+}
+
+/* 诗意网页质感：更接近视频里的留白、宣纸、缓动 */
+.rag-shell {
+  padding: 0 0 14px;
+}
+
+.rag-topbar {
+  width: min(1620px, calc(100% - 64px));
+  min-height: 82px;
+}
+
+.rag-layout {
+  width: min(1620px, calc(100% - 64px));
+  gap: 20px;
+}
+
+.rag-brand__logo {
+  width: 46px;
+  height: 46px;
+  border-radius: 16px;
+  font-size: 22px;
+}
+
+.rag-brand strong {
+  font-size: 22px;
+}
+
+.ghost-button {
+  min-width: 76px;
+  height: 40px;
+  border-radius: 999px;
+  background: rgba(255, 250, 238, 0.78);
+  color: #25362d;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
+}
+
+.rag-user {
+  min-height: 44px;
+  border-radius: 999px;
+  background: rgba(255, 250, 238, 0.74);
+}
+
+.sidebar-card,
+.chat-card {
+  background:
+    radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.68), transparent 38%),
+    linear-gradient(180deg, rgba(255, 253, 247, 0.94), rgba(246, 240, 225, 0.86));
+}
+
+.sidebar-card {
+  padding: 18px;
+}
+
+.chat-card__header {
+  padding: 22px 22px 16px;
+}
+
+.welcome-shell {
+  min-height: 430px;
+}
+
+.welcome-box h3 {
+  font-size: 34px;
+}
+
+.composer__input {
+  min-height: 78px;
+  border-radius: 18px;
+  font-size: 17px;
+  box-shadow:
+    inset 0 0 0 1px rgba(139, 111, 61, 0.08),
+    0 12px 30px rgba(50, 42, 28, 0.06);
+}
+
+.send-button {
+  min-width: 126px;
+  height: 42px;
+  border-radius: 14px;
+  font-size: 16px;
+}
+
+.ink-sun {
+  animation: poeticSun 8s ease-in-out infinite;
+}
+
+.cloud-ribbon--top {
+  animation: poeticCloud 16s ease-in-out infinite alternate;
+}
+
+.cloud-ribbon--bottom {
+  animation: poeticCloudReverse 18s ease-in-out infinite alternate;
+}
+
+.ink-mountain--left {
+  animation: inkFloat 12s ease-in-out infinite alternate;
+}
+
+.ink-mountain--right {
+  animation: inkFloat 14s ease-in-out infinite alternate-reverse;
+}
+
+.session-list,
+.message-list {
+  scrollbar-color: rgba(139, 111, 61, 0.34) transparent;
+  scrollbar-width: thin;
+}
+
+.session-list::-webkit-scrollbar,
+.message-list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.session-list::-webkit-scrollbar-thumb,
+.message-list::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(139, 111, 61, 0.34);
+}
+
+@keyframes poeticSun {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.62;
+  }
+  50% {
+    transform: scale(1.08);
+    opacity: 0.78;
+  }
+}
+
+@keyframes poeticCloud {
+  from {
+    transform: translateX(-16px);
+  }
+  to {
+    transform: translateX(26px);
+  }
+}
+
+@keyframes poeticCloudReverse {
+  from {
+    transform: scaleX(-1) translateX(-22px);
+  }
+  to {
+    transform: scaleX(-1) translateX(18px);
+  }
+}
+
+@keyframes inkFloat {
+  from {
+    filter: blur(1px);
+  }
+  to {
+    filter: blur(2px);
+    opacity: 0.46;
+  }
 }
 
 @keyframes dotBounce {

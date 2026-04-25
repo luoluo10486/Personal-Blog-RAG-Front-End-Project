@@ -1,9 +1,10 @@
 import { createRouter, createWebHistory } from "vue-router";
-import LoginView from "../views/LoginView.vue";
-import RagChatView from "../views/RagChatView.vue";
-import WorkbenchView from "../views/WorkbenchView.vue";
-import AdminConsoleView from "../views/AdminConsoleView.vue";
 import { getStoredAuthToken } from "../utils/auth";
+
+const LoginView = () => import("../views/LoginView.vue");
+const RagChatView = () => import("../views/RagChatView.vue");
+const WorkbenchView = () => import("../views/WorkbenchView.vue");
+const AdminConsoleView = () => import("../views/AdminConsoleView.vue");
 
 function resolveRedirectTarget(target) {
   if (typeof target !== "string") {
@@ -42,7 +43,7 @@ const router = createRouter({
       meta: {
         requiresAuth: true,
         title: "RAG 问答",
-        description: "基于知识检索与流式回答的企业级问答工作台"
+        description: "基于知识检索与流式回答的企业级问答工作台。"
       }
     },
     {
