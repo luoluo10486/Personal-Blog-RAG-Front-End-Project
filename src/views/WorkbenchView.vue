@@ -1,4 +1,4 @@
-﻿<script setup>
+<script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
 import gsap from "gsap";
@@ -20,6 +20,7 @@ const chapters = [
   { key: "home", label: "首页" },
   { key: "rag", label: "问答" },
   { key: "admin", label: "管理" },
+  { key: "ideas", label: "小巧思" },
   { key: "todo", label: "待开发" }
 ];
 
@@ -194,6 +195,17 @@ onBeforeUnmount(() => {
           />
         </section>
 
+        <section class="story-panel story-panel--ideas">
+          <button class="scene-label scene-label--button" type="button" @click="router.push('/ideas')">
+            小巧思
+          </button>
+          <img
+            class="person-asset person-asset--ideas"
+            src="/artwork/workbench-person-idea.png"
+            alt="小巧思人物主体"
+          />
+        </section>
+
         <section class="story-panel story-panel--todo">
           <div class="scene-label scene-label--static">待开发</div>
           <img
@@ -334,6 +346,13 @@ onBeforeUnmount(() => {
   filter: blur(12px);
 }
 
+.story-panel--ideas::before {
+  background:
+    radial-gradient(ellipse at 60% 42%, rgba(255, 255, 255, 0.78), transparent 30%),
+    radial-gradient(ellipse at 68% 82%, rgba(122, 146, 132, 0.18), transparent 34%),
+    radial-gradient(ellipse at 22% 18%, rgba(212, 223, 215, 0.34), transparent 24%);
+}
+
 .person-asset {
   position: absolute;
   z-index: 4;
@@ -365,6 +384,12 @@ onBeforeUnmount(() => {
   left: 43vw;
   top: 6vh;
   width: min(680px, 50vw);
+}
+
+.person-asset--ideas {
+  left: 41vw;
+  top: 10vh;
+  width: min(700px, 50vw);
 }
 
 .person-asset--todo {
@@ -444,4 +469,3 @@ onBeforeUnmount(() => {
   }
 }
 </style>
-
