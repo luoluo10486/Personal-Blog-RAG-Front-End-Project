@@ -141,7 +141,7 @@ onBeforeUnmount(() => {
   <section ref="shellRef" class="workbench-shell">
     <header class="gallery-nav">
       <button class="gallery-nav__brand" type="button" @click="scrollToChapter(0)">
-        RAG 山水阁
+        落落妙妙屋
       </button>
 
       <nav class="gallery-nav__links" aria-label="工作台导航">
@@ -338,7 +338,7 @@ onBeforeUnmount(() => {
   position: absolute;
   z-index: 4;
   height: auto;
-  max-height: 82vh;
+  max-height: none;
   object-fit: contain;
   pointer-events: none;
   user-select: none;
@@ -351,26 +351,26 @@ onBeforeUnmount(() => {
 
 .person-asset--home {
   left: 35vw;
-  top: 10vh;
-  width: min(560px, 40vw);
+  top: 7vh;
+  width: min(620px, 44vw);
 }
 
 .person-asset--rag {
   left: 39vw;
-  top: 9vh;
-  width: min(580px, 42vw);
+  top: 16vh;
+  width: min(680px, 50vw);
 }
 
 .person-asset--admin {
   left: 43vw;
-  top: 9vh;
-  width: min(560px, 40vw);
+  top: 6vh;
+  width: min(680px, 50vw);
 }
 
 .person-asset--todo {
   left: 38vw;
-  top: 8vh;
-  width: min(620px, 44vw);
+  top: 5vh;
+  width: min(720px, 54vw);
 }
 
 .scene-label {
@@ -444,3 +444,4 @@ onBeforeUnmount(() => {
   }
 }
 </style>
+
