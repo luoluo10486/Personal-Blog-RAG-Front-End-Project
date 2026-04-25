@@ -3,6 +3,7 @@ import { computed, nextTick, onBeforeUnmount, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import LoginClothScene from "../components/LoginClothScene.vue";
 import { saveAuthSession } from "../utils/auth";
+import { resolvePublicAssetUrl } from "../utils/assets";
 
 const route = useRoute();
 const router = useRouter();
@@ -34,8 +35,8 @@ const loginMusicRef = ref(null);
 const volumeChargeSfxRef = ref(null);
 const loginMusicSrc = ref("");
 const volumeChargeSfxSrc = ref("");
-const LOGIN_MUSIC_URL = "/login-bgm.mp3";
-const VOLUME_CHARGE_SFX_URL = "/sfx/angry-birds-charge.mp3";
+const LOGIN_MUSIC_URL = resolvePublicAssetUrl("login-bgm.mp3");
+const VOLUME_CHARGE_SFX_URL = resolvePublicAssetUrl("sfx/angry-birds-charge.mp3");
 const needMusicGesture = ref(false);
 const isMusicPlaying = ref(false);
 const loginTrackName = "Drink, Pray, Love!";
@@ -144,6 +145,10 @@ const volumeProjectileStyle = computed(() => {
     opacity: 1
   };
 });
+
+const loginPageStyle = computed(() => ({
+  "--login-bg-image": `url("${resolvePublicAssetUrl("login-bg-anime.png")}")`
+}));
 
 function setTip(message, type = "info") {
   formTip.value = message;
@@ -858,7 +863,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <section class="login-page">
+  <section class="login-page" :style="loginPageStyle">
     <div class="bg-shape bg-a" />
     <div class="bg-shape bg-b" />
     <div class="bg-shape bg-c" />
@@ -1120,7 +1125,7 @@ onBeforeUnmount(() => {
   content: "";
   position: absolute;
   inset: 0;
-  background: url("/login-bg-anime.png") center / cover no-repeat;
+  background: var(--login-bg-image) center / cover no-repeat;
   opacity: 0.16;
   z-index: 0;
 }
@@ -1187,7 +1192,7 @@ onBeforeUnmount(() => {
   content: "";
   position: absolute;
   inset: -35%;
-  background: url("/login-bg-anime.png") center 42% / cover no-repeat;
+  background: var(--login-bg-image) center 42% / cover no-repeat;
   transform: rotate(-45deg) scale(1.42);
   transform-origin: center;
 }

@@ -4,6 +4,7 @@ import { useRouter } from "vue-router";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { clearStoredAuth, getStoredAuthUser } from "../utils/auth";
+import { resolvePublicAssetUrl } from "../utils/assets";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -15,6 +16,14 @@ const trackRef = ref(null);
 const progress = ref(0);
 const activeChapter = ref(0);
 let animationContext = null;
+
+const artworkUrls = {
+  home: resolvePublicAssetUrl("artwork/workbench-person-opening.png"),
+  rag: resolvePublicAssetUrl("artwork/workbench-person-rag.png"),
+  admin: resolvePublicAssetUrl("artwork/workbench-person-admin.png"),
+  ideas: resolvePublicAssetUrl("artwork/workbench-person-idea.png"),
+  todo: resolvePublicAssetUrl("artwork/workbench-person-choice.png")
+};
 
 const chapters = [
   { key: "home", label: "首页" },
@@ -63,10 +72,9 @@ function setupHorizontalStory() {
     });
 
     gsap.set(".person-asset", {
-      autoAlpha: 0.72,
       y: 42,
       scale: 0.96,
-      filter: "blur(14px) saturate(0.95) contrast(0.98)"
+      filter: "blur(10px) saturate(0.95) contrast(0.98)"
     });
 
     gsap.to(track, {
@@ -92,7 +100,6 @@ function setupHorizontalStory() {
 
     gsap.utils.toArray(".person-asset").forEach((item) => {
       gsap.to(item, {
-        autoAlpha: 1,
         y: 0,
         scale: 1,
         filter: "blur(0px) saturate(0.98) contrast(0.99)",
@@ -168,7 +175,7 @@ onBeforeUnmount(() => {
         <section class="story-panel story-panel--home">
           <img
             class="person-asset person-asset--home"
-            src="/artwork/workbench-person-opening.png"
+            :src="artworkUrls.home"
             alt="首页人物主体"
           />
         </section>
@@ -179,7 +186,7 @@ onBeforeUnmount(() => {
           </button>
           <img
             class="person-asset person-asset--rag"
-            src="/artwork/workbench-person-rag.png"
+            :src="artworkUrls.rag"
             alt="RAG 问答人物主体"
           />
         </section>
@@ -190,7 +197,7 @@ onBeforeUnmount(() => {
           </button>
           <img
             class="person-asset person-asset--admin"
-            src="/artwork/workbench-person-admin.png"
+            :src="artworkUrls.admin"
             alt="后台管理人物主体"
           />
         </section>
@@ -201,7 +208,7 @@ onBeforeUnmount(() => {
           </button>
           <img
             class="person-asset person-asset--ideas"
-            src="/artwork/workbench-person-idea.png"
+            :src="artworkUrls.ideas"
             alt="小巧思人物主体"
           />
         </section>
@@ -210,7 +217,7 @@ onBeforeUnmount(() => {
           <div class="scene-label scene-label--static">待开发</div>
           <img
             class="person-asset person-asset--todo"
-            src="/artwork/workbench-person-choice.png"
+            :src="artworkUrls.todo"
             alt="待开发人物主体"
           />
         </section>
@@ -355,7 +362,7 @@ onBeforeUnmount(() => {
 
 .person-asset {
   position: absolute;
-  z-index: 4;
+  z-index: 6;
   height: auto;
   max-height: none;
   object-fit: contain;
@@ -381,8 +388,8 @@ onBeforeUnmount(() => {
 }
 
 .person-asset--admin {
-  left: 43vw;
-  top: 6vh;
+  left: 42vw;
+  top: 7vh;
   width: min(680px, 50vw);
 }
 
