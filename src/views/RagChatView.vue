@@ -66,6 +66,85 @@ const currentUserName = computed(() => {
 const userInitial = computed(() => {
   return currentUserName.value.slice(0, 1).toUpperCase() || "U";
 });
+const sessionSearch = ref("");
+const activeWorkbenchMode = ref("summary");
+const workbenchModes = [
+  { key: "summary", label: "内容总结" },
+  { key: "explain", label: "代码解释" },
+  { key: "compare", label: "方案对比" }
+];
+const quickActions = [
+  {
+    key: "summary",
+    title: "内容总结",
+    description: "快速提炼核心要点，生成结构化总结与摘要。"
+  },
+  {
+    key: "tasks",
+    title: "任务拆解",
+    description: "将复杂任务拆解为可执行步骤，并给出优先级建议。"
+  },
+  {
+    key: "compare",
+    title: "方案对比",
+    description: "对比多个方案的优势，提供清晰的对比结论。"
+  }
+];
+const retrievalSources = [
+  { type: "PDF", title: "检索增强生成（RAG）综述.pdf", score: "0.92", page: "P.12", tone: "red" },
+  { type: "MD", title: "企业知识库建设指南.md", score: "0.88", page: "段落 4", tone: "ink" },
+  { type: "DOCX", title: "问答系统设计与优化.docx", score: "0.82", page: "P.8", tone: "blue" },
+  { type: "PDF", title: "大模型应用开发实战.pdf", score: "0.76", page: "P.45", tone: "red" },
+  { type: "MD", title: "向量数据库选型建议.md", score: "0.68", page: "P.15", tone: "ink" }
+];
+const citationSnippet =
+  "检索增强生成（RAG）通过将大模型与外部知识库相结合，在生成答案前先检索相关信息，从而提升回答的准确性与可追溯性...";
+const filteredSessions = computed(() => {
+  const keyword = sessionSearch.value.trim().toLowerCase();
+  if (!keyword) {
+    return sessions.value;
+  }
+
+  return sessions.value.filter((item) => item.title.toLowerCase().includes(keyword));
+});
+const groupedSessions = computed(() => {
+  const now = new Date();
+  const groups = [
+    { key: "today", label: "今天", items: [] },
+    { key: "yesterday", label: "昨天", items: [] },
+    { key: "earlier", label: "更早", items: [] }
+  ];
+
+  filteredSessions.value.forEach((session) => {
+    const date = session.lastTime ? new Date(session.lastTime) : null;
+    if (!date || Number.isNaN(date.getTime())) {
+      groups[2].items.push(session);
+      return;
+    }
+
+    const diffDays = Math.floor(
+      (new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime() -
+        new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime()) /
+        86400000
+    );
+
+    if (diffDays === 0) {
+      groups[0].items.push(session);
+    } else if (diffDays === 1) {
+      groups[1].items.push(session);
+    } else {
+      groups[2].items.push(session);
+    }
+  });
+
+  return groups.filter((group) => group.items.length > 0);
+});
+const requestStats = computed(() => [
+  { label: "检索耗时", value: isStreaming.value ? "生成中" : "768 ms" },
+  { label: "返回片段", value: `${retrievalSources.length + 1} 条` },
+  { label: "Trace ID", value: currentSessionId.value || "f8c7a2e1-9d3e-4b91-8c01" },
+  { label: "请求时间", value: new Date().toLocaleString("zh-CN", { hour12: false }) }
+]);
 const sendButtonText = computed(() => {
   if (isStreaming.value) {
     return "停止生成";
@@ -675,19 +754,10 @@ onBeforeUnmount(() => {
 
 <template>
   <section class="rag-shell">
-    <div class="chinoiserie-layer" aria-hidden="true">
-      <span class="ink-sun" />
-      <span class="ink-mountain ink-mountain--left" />
-      <span class="ink-mountain ink-mountain--right" />
-      <span class="cloud-ribbon cloud-ribbon--top" />
-      <span class="cloud-ribbon cloud-ribbon--bottom" />
-      <span class="bamboo-shadow" />
-    </div>
-
     <header class="rag-topbar">
       <div class="rag-brand">
-        <div class="rag-brand__logo">R</div>
-        <span class="rag-brand__seal" aria-hidden="true">问</span>
+        <img class="rag-brand__logo" src="/rag-icons/brand-mark.svg" alt="RAG 问答" />
+        <img class="rag-brand__seal" src="/rag-icons/ask-seal.svg" alt="" aria-hidden="true" />
         <div>
           <strong>RAG 问答</strong>
           <span>Clean workspace</span>
@@ -698,11 +768,9 @@ onBeforeUnmount(() => {
         <button class="ghost-button" type="button" @click="router.push('/workspace')">工作台</button>
         <button class="ghost-button" type="button" @click="router.push('/admin')">后台管理</button>
         <div class="rag-user">
-          <span class="rag-user__avatar">{{ userInitial }}</span>
-          <div>
-            <small>当前登录</small>
-            <strong>{{ currentUserName }}</strong>
-          </div>
+          <img class="rag-user__avatar" src="/rag-icons/user-avatar.svg" alt="" aria-hidden="true" />
+          <strong>{{ currentUserName }}</strong>
+          <span class="rag-user__chevron" aria-hidden="true">⌄</span>
         </div>
         <button class="ghost-button ghost-button--danger" type="button" @click="handleLogout">退出</button>
       </div>
@@ -711,49 +779,77 @@ onBeforeUnmount(() => {
     <div class="rag-layout">
       <aside class="sidebar-card">
         <div class="sidebar-card__header">
-          <div>
-            <p class="sidebar-card__label">会话列表</p>
-            <h2>历史会话</h2>
-          </div>
-          <button class="new-chat-button" type="button" @click="createConversation">新建</button>
+          <h2>历史会话</h2>
+          <button class="new-chat-button" type="button" @click="createConversation">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 5v14M5 12h14" />
+            </svg>
+            新建对话
+          </button>
         </div>
 
-        <div class="sidebar-card__search">
-          <span>{{ sessions.length }} 个会话</span>
-          <span>{{ isStreaming ? "生成中" : "空闲" }}</span>
+        <div class="sidebar-search">
+          <input v-model="sessionSearch" type="search" placeholder="搜索会话标题..." />
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="m21 21-4.35-4.35M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z" />
+          </svg>
         </div>
 
         <div v-if="loadingSessions" class="panel-state">加载会话中...</div>
 
-        <div v-else-if="sessions.length === 0" class="panel-state panel-state--compact">
+        <div v-else-if="filteredSessions.length === 0" class="panel-state panel-state--compact">
           暂无会话，直接在右侧开始提问。
         </div>
 
-        <ul v-else class="session-list">
-          <li v-for="session in sessions" :key="session.id">
-            <button
-              type="button"
-              :class="['session-item', { 'is-active': currentSessionId === session.id }]"
-              @click="selectSession(session.id)"
-            >
-              <strong>{{ session.title }}</strong>
-              <span>{{ formatSessionTime(session.lastTime) }}</span>
-            </button>
-            <button class="session-item__delete" type="button" @click="removeSession(session.id)">
-              删除
-            </button>
-          </li>
-        </ul>
+        <div v-else class="session-list">
+          <section v-for="group in groupedSessions" :key="group.key" class="session-group">
+            <h3>{{ group.label }}</h3>
+            <ul>
+              <li v-for="session in group.items" :key="session.id">
+                <button
+                  type="button"
+                  :class="['session-item', { 'is-active': currentSessionId === session.id }]"
+                  @click="selectSession(session.id)"
+                >
+                  <span class="session-item__icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24">
+                      <path d="M5 6.5h14M5 12h10M5 17.5h7" />
+                    </svg>
+                  </span>
+                  <span class="session-item__copy">
+                    <strong>{{ session.title }}</strong>
+                    <small>{{ activeSession?.id === session.id ? "当前会话" : "继续追问与整理" }}</small>
+                  </span>
+                  <time>{{ formatSessionTime(session.lastTime) }}</time>
+                </button>
+                <button class="session-item__delete" type="button" @click="removeSession(session.id)">
+                  ×
+                </button>
+              </li>
+            </ul>
+          </section>
+        </div>
+
+        <button class="history-more-button" type="button">查看全部历史会话 →</button>
       </aside>
 
       <main class="chat-card">
         <header class="chat-card__header">
-          <div>
-            <p class="chat-card__label">当前会话</p>
-            <h1>{{ currentSessionTitle }}</h1>
-            <p class="chat-card__desc">
-              {{ activeSession ? "已进入历史会话，可继续追问。" : "新会话会在第一条问题发送后自动创建。" }}
-            </p>
+          <div class="chat-title">
+            <h1>对话手稿</h1>
+            <span aria-hidden="true">问</span>
+          </div>
+
+          <div class="workbench-tabs" role="tablist" aria-label="对话模式">
+            <button
+              v-for="mode in workbenchModes"
+              :key="mode.key"
+              type="button"
+              :class="{ 'is-active': activeWorkbenchMode === mode.key }"
+              @click="activeWorkbenchMode = mode.key"
+            >
+              {{ mode.label }}
+            </button>
           </div>
 
           <button
@@ -762,6 +858,10 @@ onBeforeUnmount(() => {
             :disabled="isStreaming"
             @click="deepThinkingEnabled = !deepThinkingEnabled"
           >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M9 3a4 4 0 0 0-4 4v2.5A3.5 3.5 0 0 0 6.5 16H7v2a3 3 0 0 0 5 2.24A3 3 0 0 0 17 18v-2h.5A3.5 3.5 0 0 0 19 9.5V7a4 4 0 0 0-4-4 3.98 3.98 0 0 0-3 1.36A3.98 3.98 0 0 0 9 3Z" />
+              <path d="M12 4.36v15.88" />
+            </svg>
             深度思考
           </button>
         </header>
@@ -775,22 +875,39 @@ onBeforeUnmount(() => {
 
           <template v-else>
             <div v-if="!hasMessages" class="welcome-shell">
-              <div class="welcome-box">
-                <h3>今天想问点什么？</h3>
-                <p>保留推荐问题、历史会话和流式回答，页面结构尽量贴近 `frontend` 的聊天工作区。</p>
+              <div class="welcome-hero">
+                <div class="welcome-box">
+                  <h3>今天想问点什么？</h3>
+                  <p>基于知识库检索增强，提供可靠、可追溯的回答。</p>
+                </div>
+                <div class="welcome-figure" aria-hidden="true" />
               </div>
 
               <div class="suggestions-grid">
                 <button
-                  v-for="(item, index) in suggestions"
-                  :key="`${item.title}-${index}`"
+                  v-for="(item, index) in quickActions"
+                  :key="item.key"
                   type="button"
                   class="suggestion-card"
-                  @click="handleSuggestionClick(item.question)"
+                  @click="handleSuggestionClick(suggestions[index]?.question || DEFAULT_SUGGESTIONS[index]?.question)"
                 >
+                  <span class="suggestion-card__icon" aria-hidden="true">
+                    <svg v-if="item.key === 'summary'" viewBox="0 0 24 24">
+                      <path d="M4 5.5c3.3-1.6 6.4-1.4 9 .5v13c-2.6-1.9-5.7-2.1-9-.5v-13Z" />
+                      <path d="M13 6c2.6-1.9 5.7-2.1 9-.5v13c-3.3-1.6-6.4-1.4-9 .5V6Z" />
+                    </svg>
+                    <svg v-else-if="item.key === 'tasks'" viewBox="0 0 24 24">
+                      <path d="M8 6h12M8 12h12M8 18h12" />
+                      <path d="M4 6h.01M4 12h.01M4 18h.01" />
+                    </svg>
+                    <svg v-else viewBox="0 0 24 24">
+                      <path d="M12 4v16M5 8h14" />
+                      <path d="M6 8 3 15h6L6 8ZM18 8l-3 7h6l-3-7Z" />
+                    </svg>
+                  </span>
                   <strong>{{ item.title }}</strong>
                   <small>{{ item.description }}</small>
-                  <span>{{ item.question }}</span>
+                  <span class="suggestion-card__arrow">→</span>
                 </button>
               </div>
             </div>
@@ -801,9 +918,11 @@ onBeforeUnmount(() => {
                 :key="message.id"
                 :class="['message-row', `message-row--${message.role}`]"
               >
-                <div class="message-avatar">
-                  {{ message.role === "user" ? userInitial : "AI" }}
-                </div>
+                <img
+                  class="message-avatar"
+                  :src="message.role === 'user' ? '/rag-icons/user-avatar.svg' : '/rag-icons/assistant-avatar.svg'"
+                  :alt="message.role === 'user' ? '我' : 'RAG 助手'"
+                />
 
                 <div :class="['message-bubble', `message-bubble--${message.role}`]">
                   <div class="message-bubble__meta">
@@ -849,22 +968,33 @@ onBeforeUnmount(() => {
                     v-if="message.role === 'assistant' && message.status !== 'streaming' && message.content"
                     class="message-actions"
                   >
-                    <button type="button" @click="copyMessageContent(message.content)">复制</button>
+                    <button type="button" title="复制" @click="copyMessageContent(message.content)">
+                      <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M8 8h10v12H8z" />
+                        <path d="M6 16H4V4h12v2" />
+                      </svg>
+                    </button>
                     <button
+                      title="有帮助"
                       type="button"
                       :class="{ 'is-active': message.feedback === 'like' }"
                       :disabled="message.id.startsWith('assistant-')"
                       @click="submitFeedback(message, 'like')"
                     >
-                      有帮助
+                      <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M7 10v10H4V10h3Zm0 0 5-7 1.5 1.5L12 9h6a2 2 0 0 1 2 2l-1 7a2 2 0 0 1-2 2H7" />
+                      </svg>
                     </button>
                     <button
+                      title="需改进"
                       type="button"
                       :class="{ 'is-active': message.feedback === 'dislike' }"
                       :disabled="message.id.startsWith('assistant-')"
                       @click="submitFeedback(message, 'dislike')"
                     >
-                      需改进
+                      <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M7 14V4H4v10h3Zm0 0 5 7 1.5-1.5L12 15h6a2 2 0 0 0 2-2l-1-7a2 2 0 0 0-2-2H7" />
+                      </svg>
                     </button>
                   </div>
                 </div>
@@ -876,31 +1006,131 @@ onBeforeUnmount(() => {
         <footer class="composer">
           <div v-if="thinkingMessage" class="thinking-tip">深度思考中，正在生成推理内容...</div>
 
-          <textarea
-            ref="textareaRef"
-            v-model="draft"
-            class="composer__input"
-            rows="2"
-            :placeholder="
-              deepThinkingEnabled
-                ? '输入需要深度分析的问题...'
-                : '输入你的问题，Enter 发送，Shift + Enter 换行'
-            "
-            @input="resizeComposer"
-            @keydown="handleComposerKeydown"
-          />
+          <div class="composer-box">
+            <textarea
+              ref="textareaRef"
+              v-model="draft"
+              class="composer__input"
+              rows="2"
+              :placeholder="
+                deepThinkingEnabled
+                  ? '输入需要深度分析的问题...'
+                  : '输入你的问题，Enter 发送'
+              "
+              @input="resizeComposer"
+              @keydown="handleComposerKeydown"
+            />
 
-          <div class="composer__footer">
-            <div class="composer__hint">
-              <span>Enter 发送</span>
-              <span>Shift + Enter 换行</span>
+            <div class="composer__footer">
+              <div class="composer-tools">
+                <button type="button">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M12 4v16M6 8v8M18 8v8" />
+                  </svg>
+                  默认检索
+                  <span>⌄</span>
+                </button>
+                <button type="button">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Z" />
+                    <path d="M3.6 9h16.8M3.6 15h16.8M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18" />
+                  </svg>
+                  联网检索
+                  <span class="tool-switch" aria-hidden="true"></span>
+                </button>
+                <button type="button">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M7 8h10M7 12h6M5 4h14v16H5z" />
+                  </svg>
+                  引用优先
+                  <span>⌄</span>
+                </button>
+              </div>
+
+              <div class="composer-actions">
+                <button type="button" title="附件">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="m21.4 11.6-8.9 8.9a6 6 0 0 1-8.5-8.5l9-9a4 4 0 1 1 5.6 5.7l-8.8 8.8a2 2 0 0 1-2.9-2.8l8.2-8.2" />
+                  </svg>
+                </button>
+                <button type="button" title="变量">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M8 4c-2 1.2-2 4-2 6s0 4-2 5c2 1 2 3 2 5s0 4.8 2 6M16 4c2 1.2 2 4 2 6s0 4 2 5c-2 1-2 3-2 5s0 4.8-2 6" />
+                  </svg>
+                </button>
+                <button type="button" title="润色">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M12 3c0 5-2.5 7.5-7.5 7.5C9.5 10.5 12 13 12 18c0-5 2.5-7.5 7.5-7.5C14.5 10.5 12 8 12 3Z" />
+                    <path d="M19 16c0 2-1 3-3 3 2 0 3 1 3 3 0-2 1-3 3-3-2 0-3-1-3-3Z" />
+                  </svg>
+                </button>
+                <button class="send-button" :class="{ 'is-stop': isStreaming }" type="button" @click="sendMessage">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="m22 2-7 20-4-9-9-4 20-7Z" />
+                    <path d="M22 2 11 13" />
+                  </svg>
+                  {{ sendButtonText }}
+                </button>
+              </div>
             </div>
-            <button class="send-button" :class="{ 'is-stop': isStreaming }" type="button" @click="sendMessage">
-              {{ sendButtonText }}
-            </button>
+          </div>
+          <div class="composer__hint">
+            <span>Enter 发送</span>
+            <span>Shift + Enter 换行</span>
           </div>
         </footer>
       </main>
+
+      <aside class="insight-stack" aria-label="检索信息">
+        <section class="insight-card insight-card--sources">
+          <header>
+            <h2>检索来源</h2>
+            <span>{{ retrievalSources.length + 1 }}</span>
+          </header>
+          <ol class="source-list">
+            <li v-for="(source, index) in retrievalSources" :key="source.title">
+              <span class="source-index">{{ index + 1 }}</span>
+              <div>
+                <strong>{{ source.title }}</strong>
+                <p>
+                  <span :class="['source-type', `source-type--${source.tone}`]">{{ source.type }}</span>
+                  <small>相似度 {{ source.score }}</small>
+                  <small>{{ source.page }}</small>
+                </p>
+              </div>
+              <button type="button" title="打开来源">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M14 4h6v6M10 14 20 4M20 14v6H4V4h6" />
+                </svg>
+              </button>
+            </li>
+          </ol>
+          <button class="panel-link-button" type="button">查看更多来源 →</button>
+        </section>
+
+        <section class="insight-card">
+          <header>
+            <h2>引用片段</h2>
+          </header>
+          <div class="citation-box">
+            <strong>检索增强生成（RAG）综述.pdf · P.12</strong>
+            <p>{{ citationSnippet }}</p>
+          </div>
+          <button class="panel-link-button" type="button">查看原文 →</button>
+        </section>
+
+        <section class="insight-card">
+          <header>
+            <h2>本次请求</h2>
+          </header>
+          <dl class="request-stats">
+            <div v-for="item in requestStats" :key="item.label">
+              <dt>{{ item.label }}</dt>
+              <dd>{{ item.value }}</dd>
+            </div>
+          </dl>
+        </section>
+      </aside>
     </div>
   </section>
 </template>
@@ -2237,6 +2467,946 @@ onBeforeUnmount(() => {
 
   .send-button {
     width: 100%;
+  }
+}
+
+/* Prototype alignment overrides */
+.rag-shell {
+  height: 100vh;
+  padding: 0 24px 24px;
+  grid-template-rows: 76px minmax(0, 1fr);
+  gap: 0;
+  overflow: hidden;
+  background:
+    linear-gradient(90deg, rgba(116, 92, 54, 0.045) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(116, 92, 54, 0.04) 1px, transparent 1px),
+    url("/artwork/workbench-person-rag.png"),
+    #f5ecdc;
+  background-size: 28px 28px, 28px 28px, auto 118%;
+  background-position: 0 0, 0 0, right 40% center;
+  background-repeat: repeat, repeat, no-repeat;
+  color: #26352e;
+}
+
+.rag-shell::before {
+  background:
+    linear-gradient(90deg, rgba(255, 250, 239, 0.88), rgba(255, 250, 239, 0.56) 42%, rgba(255, 250, 239, 0.42)),
+    radial-gradient(ellipse at 5% 86%, rgba(57, 75, 64, 0.12), transparent 34%);
+  mask-image: none;
+}
+
+.rag-shell::after {
+  display: none;
+}
+
+.rag-topbar,
+.rag-layout {
+  width: min(1780px, 100%);
+}
+
+.rag-topbar {
+  min-height: 76px;
+  padding: 0;
+}
+
+.rag-brand {
+  gap: 10px;
+}
+
+.rag-brand__logo {
+  width: 54px;
+  height: 54px;
+  border-radius: 14px;
+  object-fit: contain;
+  box-shadow: 0 12px 24px rgba(32, 50, 42, 0.18);
+}
+
+.rag-brand__seal {
+  width: 44px;
+  height: 44px;
+  margin: 0 8px 0 0;
+  object-fit: contain;
+  transform: none;
+  border: 0;
+  background: transparent;
+}
+
+.rag-brand strong {
+  font-size: 25px;
+  line-height: 1.15;
+}
+
+.rag-brand span {
+  margin-top: 4px;
+  font-size: 15px;
+}
+
+.rag-topbar__actions {
+  gap: 14px;
+}
+
+.ghost-button {
+  min-width: 86px;
+  height: 42px;
+  padding: 0 22px;
+  border: 1px solid rgba(102, 86, 60, 0.2);
+  border-radius: 999px;
+  background: rgba(255, 251, 243, 0.72);
+  color: #26352e;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.76), 0 10px 20px rgba(70, 55, 31, 0.06);
+}
+
+.rag-user {
+  min-height: 44px;
+  gap: 8px;
+  padding: 4px 14px 4px 4px;
+  border: 1px solid rgba(102, 86, 60, 0.2);
+  background: rgba(255, 251, 243, 0.72);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.76), 0 10px 20px rgba(70, 55, 31, 0.06);
+}
+
+.rag-user__avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: contain;
+  box-shadow: none;
+}
+
+.rag-user strong {
+  max-width: 92px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #26352e;
+  font-size: 15px;
+}
+
+.rag-user__chevron {
+  color: #6f695d;
+  font-size: 18px;
+  line-height: 1;
+}
+
+.rag-layout {
+  height: 100%;
+  min-height: 0;
+  grid-template-columns: 340px minmax(680px, 1fr) 340px;
+  gap: 18px;
+}
+
+.sidebar-card,
+.chat-card,
+.insight-card {
+  border: 1px solid rgba(103, 83, 49, 0.22);
+  border-radius: 14px;
+  background:
+    linear-gradient(180deg, rgba(255, 252, 246, 0.84), rgba(247, 239, 223, 0.76)),
+    rgba(255, 250, 239, 0.78);
+  box-shadow: 0 16px 34px rgba(62, 47, 24, 0.08), inset 0 1px rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(10px);
+}
+
+.sidebar-card::before,
+.chat-card::before,
+.chat-card::after,
+.suggestion-card::before {
+  display: none;
+}
+
+.sidebar-card {
+  padding: 16px;
+  border-radius: 14px;
+}
+
+.sidebar-card__header {
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+.sidebar-card__header h2,
+.chat-title h1,
+.insight-card h2 {
+  margin: 0;
+  color: #26352e;
+  font-family: "STKaiti", "KaiTi", "Microsoft YaHei", serif;
+  letter-spacing: 0.04em;
+}
+
+.sidebar-card__header h2 {
+  font-size: 23px;
+}
+
+.new-chat-button {
+  height: 36px;
+  gap: 8px;
+  padding: 0 14px;
+  border-radius: 8px;
+  font-size: 15px;
+  box-shadow: 0 10px 20px rgba(32, 50, 42, 0.16);
+}
+
+.new-chat-button svg,
+.ghost-button svg,
+.thinking-toggle svg,
+.suggestion-card svg,
+.composer-tools svg,
+.composer-actions svg,
+.message-actions svg,
+.source-list svg,
+.sidebar-search svg,
+.session-item svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.sidebar-search {
+  position: relative;
+  margin-bottom: 16px;
+}
+
+.sidebar-search input {
+  width: 100%;
+  height: 42px;
+  border: 1px solid rgba(103, 83, 49, 0.17);
+  border-radius: 8px;
+  padding: 0 44px 0 14px;
+  background: rgba(255, 251, 243, 0.64);
+  color: #26352e;
+  outline: 0;
+}
+
+.sidebar-search input:focus {
+  border-color: rgba(35, 67, 59, 0.45);
+  box-shadow: 0 0 0 3px rgba(35, 67, 59, 0.09);
+}
+
+.sidebar-search svg {
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  color: #687164;
+  transform: translateY(-50%);
+}
+
+.session-list {
+  margin: 0;
+  display: block;
+  min-height: 0;
+  padding-right: 2px;
+  overflow: auto;
+}
+
+.session-group + .session-group {
+  margin-top: 18px;
+}
+
+.session-group h3 {
+  margin: 0 0 8px;
+  color: #6f695d;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.session-group ul {
+  list-style: none;
+  display: grid;
+  gap: 8px;
+  padding: 0;
+  margin: 0;
+}
+
+.session-group li {
+  position: relative;
+}
+
+.session-item {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 70px;
+  padding: 11px 12px;
+  border: 1px solid rgba(103, 83, 49, 0.13);
+  border-radius: 8px;
+  background: rgba(255, 251, 243, 0.56);
+  color: #26352e;
+}
+
+.session-item:hover {
+  background: rgba(247, 239, 223, 0.72);
+}
+
+.session-item.is-active {
+  border-color: rgba(35, 67, 59, 0.45);
+  background: linear-gradient(90deg, rgba(35, 67, 59, 0.12), rgba(255, 251, 243, 0.72));
+  box-shadow: inset 4px 0 #24433b;
+}
+
+.session-item__icon {
+  color: #344c42;
+}
+
+.session-item__copy {
+  min-width: 0;
+}
+
+.session-item strong,
+.session-item small,
+.session-item time {
+  display: block;
+}
+
+.session-item strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #26352e;
+  font-size: 15px;
+}
+
+.session-item small {
+  overflow: hidden;
+  margin-top: 6px;
+  color: #7d776c;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.session-item time {
+  align-self: start;
+  color: #7d776c;
+  font-size: 13px;
+}
+
+.session-item__delete {
+  position: absolute;
+  right: 8px;
+  bottom: 7px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  opacity: 0;
+  color: #9a3a31;
+}
+
+.session-group li:hover .session-item__delete {
+  opacity: 1;
+}
+
+.history-more-button,
+.panel-link-button {
+  width: 100%;
+  min-height: 36px;
+  border: 1px solid rgba(103, 83, 49, 0.14);
+  border-radius: 8px;
+  background: rgba(255, 251, 243, 0.58);
+  color: #4b4b40;
+  cursor: pointer;
+}
+
+.history-more-button {
+  margin-top: 14px;
+}
+
+.chat-card {
+  border-radius: 14px;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+}
+
+.chat-card__header {
+  position: relative;
+  grid-template-columns: 1fr auto 1fr;
+  display: grid;
+  align-items: center;
+  min-height: 76px;
+  padding: 18px 24px;
+  border-bottom: 1px solid rgba(103, 83, 49, 0.12);
+}
+
+.chat-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.chat-title h1 {
+  font-size: 30px;
+}
+
+.chat-title span {
+  display: grid;
+  place-items: center;
+  width: 25px;
+  height: 25px;
+  border: 2px solid rgba(154, 47, 40, 0.72);
+  border-radius: 6px;
+  color: #9a2f28;
+  font-family: "STKaiti", "KaiTi", serif;
+  font-weight: 800;
+}
+
+.workbench-tabs {
+  justify-self: center;
+  display: flex;
+  padding: 3px;
+  border: 1px solid rgba(103, 83, 49, 0.13);
+  border-radius: 999px;
+  background: rgba(255, 251, 243, 0.52);
+}
+
+.workbench-tabs button {
+  min-width: 104px;
+  height: 34px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #6f695d;
+  cursor: pointer;
+}
+
+.workbench-tabs button.is-active {
+  background: #24433b;
+  color: #fff9eb;
+  box-shadow: 0 8px 18px rgba(35, 67, 59, 0.18);
+}
+
+.thinking-toggle {
+  justify-self: end;
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: 8px;
+  background: rgba(255, 251, 243, 0.62);
+}
+
+.chat-card__body {
+  min-height: 0;
+  background: transparent;
+}
+
+.welcome-shell {
+  height: 100%;
+  min-height: 0;
+  align-content: start;
+  padding: 0 24px 18px;
+  gap: 18px;
+}
+
+.welcome-hero {
+  position: relative;
+  min-height: 250px;
+  display: grid;
+  align-items: center;
+  overflow: hidden;
+  border-bottom: 1px solid rgba(103, 83, 49, 0.1);
+}
+
+.welcome-figure {
+  position: absolute;
+  right: 18px;
+  bottom: -54px;
+  width: min(390px, 42%);
+  aspect-ratio: 2334 / 4069;
+  background: url("/artwork/workbench-person-rag.png") center bottom / contain no-repeat;
+  opacity: 0.68;
+  filter: sepia(0.12) saturate(0.82);
+}
+
+.welcome-box {
+  position: relative;
+  z-index: 1;
+  max-width: 760px;
+  margin: 0;
+  padding-left: 8%;
+  text-align: left;
+}
+
+.welcome-box h3 {
+  color: #21463d;
+  font-size: 42px;
+  letter-spacing: 0.08em;
+}
+
+.welcome-box h3::after {
+  content: "";
+}
+
+.welcome-box p {
+  margin-top: 16px;
+  color: #7a756a;
+  font-size: 16px;
+}
+
+.suggestions-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.suggestion-card {
+  position: relative;
+  min-height: 150px;
+  padding: 20px 18px;
+  border-radius: 8px;
+  background: rgba(255, 251, 243, 0.66);
+}
+
+.suggestion-card__icon {
+  display: block;
+  margin-bottom: 14px;
+  color: #24433b;
+}
+
+.suggestion-card__icon svg {
+  width: 30px;
+  height: 30px;
+}
+
+.suggestion-card strong {
+  color: #26352e;
+  font-size: 18px;
+}
+
+.suggestion-card small {
+  margin-top: 10px;
+  color: #5d5b51;
+  line-height: 1.7;
+}
+
+.suggestion-card__arrow {
+  position: absolute;
+  right: 16px;
+  bottom: 14px;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid rgba(103, 83, 49, 0.18);
+  border-radius: 50%;
+  color: #516255;
+  font-size: 18px;
+}
+
+.message-list {
+  height: 100%;
+  padding: 18px 24px;
+  background: transparent;
+}
+
+.message-row {
+  margin-bottom: 14px;
+}
+
+.message-row--user {
+  flex-direction: row;
+}
+
+.message-avatar {
+  width: 42px;
+  height: 42px;
+  flex: 0 0 42px;
+  border-radius: 50%;
+  object-fit: contain;
+}
+
+.message-bubble {
+  max-width: min(760px, 88%);
+  padding: 13px 16px;
+  border-radius: 8px;
+  background: rgba(255, 251, 243, 0.66);
+}
+
+.message-bubble--user {
+  border-color: rgba(103, 83, 49, 0.15);
+  background: rgba(255, 251, 243, 0.7);
+}
+
+.message-row--assistant .message-bubble {
+  border-left: 0;
+}
+
+.message-row--user .message-bubble {
+  border-right: 0;
+}
+
+.message-bubble__meta {
+  font-size: 13px;
+}
+
+.message-bubble__content {
+  color: #2f302a;
+  font-size: 15px;
+}
+
+.message-actions {
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.message-actions button {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border-radius: 6px;
+}
+
+.composer {
+  padding: 0 10px 8px;
+  border-top: 0;
+  background: transparent;
+}
+
+.composer-box {
+  padding: 14px;
+  border: 1px solid rgba(103, 83, 49, 0.16);
+  border-radius: 12px;
+  background: rgba(255, 251, 243, 0.66);
+}
+
+.composer__input {
+  min-height: 54px;
+  max-height: 104px;
+  padding: 6px 8px 8px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  font-size: 17px;
+}
+
+.composer__input:focus {
+  box-shadow: none;
+}
+
+.composer__footer {
+  margin-top: 10px;
+  align-items: center;
+}
+
+.composer-tools,
+.composer-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.composer-tools button,
+.composer-actions button {
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid rgba(103, 83, 49, 0.16);
+  border-radius: 8px;
+  background: rgba(255, 251, 243, 0.82);
+  color: #34423b;
+  cursor: pointer;
+}
+
+.composer-tools button {
+  padding: 0 12px;
+}
+
+.composer-actions button {
+  width: 42px;
+  justify-content: center;
+  padding: 0;
+}
+
+.tool-switch {
+  width: 32px;
+  height: 20px;
+  border-radius: 999px;
+  background: #e9dfcc;
+  box-shadow: inset 12px 0 #fffaf0, inset 0 0 0 1px rgba(103, 83, 49, 0.16);
+}
+
+.composer-actions .send-button {
+  width: auto;
+  min-width: 132px;
+  padding: 0 20px;
+  justify-content: center;
+  border-radius: 8px;
+}
+
+.composer__hint {
+  margin: 7px 0 0 6px;
+  gap: 14px;
+  color: #7a756a;
+  font-size: 12px;
+}
+
+.insight-stack {
+  min-height: 0;
+  display: grid;
+  grid-template-rows: minmax(0, 1.35fr) auto auto;
+  gap: 14px;
+}
+
+.insight-card {
+  min-height: 0;
+  padding: 14px;
+  overflow: hidden;
+}
+
+.insight-card header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.insight-card h2 {
+  font-size: 20px;
+}
+
+.insight-card header span {
+  display: grid;
+  place-items: center;
+  min-width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: rgba(103, 83, 49, 0.12);
+  color: #6a5a3e;
+}
+
+.source-list {
+  display: grid;
+  gap: 12px;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+  overflow: auto;
+}
+
+.source-list li {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) 24px;
+  gap: 10px;
+  align-items: start;
+}
+
+.source-index {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #635b4a;
+  color: #fffaf0;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.source-list li:nth-child(1) .source-index,
+.source-list li:nth-child(4) .source-index {
+  background: #8f3a32;
+}
+
+.source-list strong {
+  display: block;
+  overflow: hidden;
+  color: #38372f;
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.source-list p {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 8px 0 0;
+  color: #7a756a;
+  font-size: 12px;
+}
+
+.source-type {
+  padding: 1px 6px;
+  border-radius: 5px;
+  border: 1px solid rgba(103, 83, 49, 0.2);
+  background: rgba(255, 251, 243, 0.62);
+}
+
+.source-type--red {
+  border-color: rgba(143, 58, 50, 0.28);
+  color: #9a3a31;
+}
+
+.source-type--blue {
+  border-color: rgba(57, 115, 184, 0.28);
+  color: #3973b8;
+}
+
+.source-list button {
+  border: 0;
+  background: transparent;
+  color: #34423b;
+  cursor: pointer;
+}
+
+.panel-link-button {
+  margin-top: 14px;
+}
+
+.citation-box {
+  border: 1px solid rgba(103, 83, 49, 0.14);
+  border-radius: 8px;
+  padding: 12px;
+  background: rgba(255, 251, 243, 0.5);
+}
+
+.citation-box strong {
+  display: block;
+  color: #4d4b42;
+  font-size: 14px;
+}
+
+.citation-box p {
+  margin: 10px 0 0;
+  color: #6c675c;
+  font-size: 14px;
+  line-height: 1.65;
+}
+
+.request-stats {
+  margin: 0;
+}
+
+.request-stats div {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 11px 0;
+  border-bottom: 1px solid rgba(103, 83, 49, 0.12);
+}
+
+.request-stats div:last-child {
+  border-bottom: 0;
+}
+
+.request-stats dt {
+  color: #6f695d;
+  font-size: 14px;
+}
+
+.request-stats dd {
+  min-width: 0;
+  max-width: 190px;
+  margin: 0;
+  overflow: hidden;
+  color: #4a493f;
+  font-size: 14px;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 1280px) {
+  .rag-shell {
+    height: auto;
+    min-height: 100vh;
+    padding: 0 18px 18px;
+    overflow: auto;
+  }
+
+  .rag-layout {
+    grid-template-columns: 300px minmax(0, 1fr);
+    height: auto;
+  }
+
+  .insight-stack {
+    grid-column: 1 / -1;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-rows: auto;
+  }
+}
+
+@media (max-width: 900px) {
+  .rag-topbar {
+    min-height: auto;
+    padding: 14px 0;
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .rag-layout,
+  .insight-stack {
+    grid-template-columns: 1fr;
+  }
+
+  .chat-card__header {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .workbench-tabs,
+  .thinking-toggle {
+    justify-self: start;
+  }
+
+  .welcome-box {
+    padding-left: 0;
+  }
+
+  .welcome-figure {
+    opacity: 0.35;
+    width: 54%;
+  }
+}
+
+@media (max-width: 640px) {
+  .rag-shell {
+    padding: 0 12px 14px;
+    background-size: 28px 28px, 28px 28px, auto 88%;
+  }
+
+  .rag-brand__logo {
+    width: 46px;
+    height: 46px;
+  }
+
+  .rag-brand__seal {
+    width: 38px;
+    height: 38px;
+  }
+
+  .rag-brand strong {
+    font-size: 21px;
+  }
+
+  .workbench-tabs {
+    width: 100%;
+    overflow-x: auto;
+  }
+
+  .suggestions-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .welcome-box h3 {
+    font-size: 32px;
+  }
+
+  .composer-tools,
+  .composer-actions {
+    width: 100%;
+  }
+
+  .composer-actions .send-button {
+    flex: 1;
   }
 }
 </style>
